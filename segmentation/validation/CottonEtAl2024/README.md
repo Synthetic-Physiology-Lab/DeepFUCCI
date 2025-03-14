@@ -18,3 +18,8 @@ and run:
 python segment_nuclei.py
 python view_in_napari.py
 ```
+
+# Accuracy check
+
+We manually curated one frame to check the accuracy.
+TODO insert accuracy check

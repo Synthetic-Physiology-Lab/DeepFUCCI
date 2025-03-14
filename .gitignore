@@ -169,3 +169,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Unet Library
+PlotNeuralNet/
+unet.pdf
+*.aux
