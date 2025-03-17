@@ -1,0 +1,5 @@
+filename: "RGB-PIP-FUCCI.tif"
+channels:
+  magenta: 1 # red
+  cyan: 2  # green
+  tubulin: 0  # blue 
