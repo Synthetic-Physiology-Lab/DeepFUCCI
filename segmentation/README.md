@@ -44,4 +44,16 @@ For other labels, the script has to be adapted.
 Then, I duplicated the label layer that seemed
 to have the best segmentation and manually curated
 this layer.
-The manually curated layer is then exported. 
+The manually curated layer is then exported from Napari
+to the `dapieq_labels_manual.tif` file. 
+
+## Generate training data
+
+The annotation is done on entire videos because the
+FUCCI sensor goes dark after division. By switching
+between frames, it becomes easier to judge if there is a
+nucleus, debris, or an artifact (e.g., from bleedthrough).
+However, it makes sense to only annotate single frames
+because most of the nuclei look similar.
+Single frames are then exported through
+`extract_frames.py`. 
