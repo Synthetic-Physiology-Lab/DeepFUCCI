@@ -12,6 +12,7 @@ and a cytoplasmic stain that does not stain the nucleus (here tubulin).
 The images are flatfield-corrected if applicable (mostly for 20x and 40x acquisitions).
 
 The data structure is:
+
 1. `images`: flat-field corrected three channel frames (ending `*.tif`)
 2. `masks`: segmentation masks (ending `*.tif`)
 3. `classes`: JSON files with phase labels, more details below (ending `*.json`)
