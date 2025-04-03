@@ -37,8 +37,31 @@ you can select the label in the `label` layer of Napari,
 which will give you the label ID).
 The name of the file that is currently opened is printed
 in the command line.
-When you are done with the file, hit enter and the next
-file will open.
+When you are done with the file, hit enter in the command line
+ and the next file will open.
+**Note: A new points layer is opened, delete the old one!**
 After the last file, nothing will happen and can you close napari.
 
 Copy the files into the general training data folder.
+Here, it is called `training_data_relabeled_classified`.
+It holds all annotated data that is not yet cropped or tiled.
+In a next step, the data is tiled (here to 256x256 pixels).
+The number of nuclei per crop are counted. If there are less
+than 4 nuclei (nuclei touching the border are not counted),
+the crop is discarded.
+The script for tiling and filtering is called:
+
+```
+python tile_training_data.py
+```
+
+
+## Training
+
+See the scripts in the `training_scripts` folder.
+They follow mostly the instructions of the StarDist
+repository.
+
+## Using the model
+
+TODO
