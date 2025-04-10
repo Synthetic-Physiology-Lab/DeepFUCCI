@@ -4,15 +4,15 @@ from glob import glob
 from csbdeep.utils import Path
 import os
 import json
+import pyclesperanto_prototype as cle
 import scipy.ndimage as ndimage
 
-# data_dir = "training_data"
 data_dir = "training_data_relabeled_classified"  
 new_data_dir = "training_data_tiled_binned_classified"
 
 patch_size = 192 
+minimum_required_masks = 4
 binning_factor = 2
-minimum_required_masks = 3
 
 if not os.path.isdir(new_data_dir):
     os.mkdir(new_data_dir)
@@ -49,16 +49,22 @@ for image_file, mask_file, class_file in zip(image_files, mask_files, classes_fi
     x_shape = nucleus_labels.shape[0] 
     tiles_per_row = x_shape // patch_size
     tiles = tiles_per_row ** 2
-    print(tiles_per_row, tiles)
     if tiles == 1:
         # here we assume that there are always enough masks
-        number_of_masks += len(np.unique(nucleus_labels)) - 1
         imsave(os.path.join(new_data_dir, "masks", Path(mask_file).name), nucleus_labels, dtype=np.uint16, compression="zlib", check_contrast=False)
         imsave(os.path.join(new_data_dir, "images", Path(image_file).name), image, compression="zlib")
         # just copy the class labels
         basename = os.path.basename(image_file)
         basename = basename.replace(".tif", ".json")
         unique_masks = np.unique(nucleus_labels)
+        unique_masks_inside = np.unique(cle.exclude_labels_on_edges(nucleus_labels))
+        if len(unique_masks) < minimum_required_masks + 1:
+            print(f"Not enough masks in file {Path(image_file).name}")
+            continue
+        if len(unique_masks_inside) < minimum_required_masks + 1:
+            print(f"Not enough masks inside FOV in file {Path(image_file).name}")
+            continue
+        number_of_masks += len(unique_masks) - 1
         cls_dict = {}
         for mask_label in unique_masks:
             if mask_label == 0:
@@ -98,8 +104,12 @@ for image_file, mask_file, class_file in zip(image_files, mask_files, classes_fi
             class_file_name = class_file_name.replace(".json", f"_{tile}.json")
             # do not save data if not enough pixels
             unique_masks = np.unique(new_masks)
+            unique_masks_inside = np.unique(cle.exclude_labels_on_edges(new_masks))
             if len(unique_masks) < minimum_required_masks + 1:
                 print(f"Not enough masks in tile [{i}, {j}] in file {image_file_name}")
+                continue
+            if len(unique_masks_inside) < minimum_required_masks + 1:
+                print(f"Not enough masks inside FOV in tile [{i}, {j}] in file {image_file_name}")
                 continue
 
             number_of_masks += len(np.unique(new_masks)) - 1
