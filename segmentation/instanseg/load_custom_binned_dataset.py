@@ -38,7 +38,7 @@ Segmentation_Dataset["Validation"] = []
 def load_custom_dataset(
     Segmentation_Dataset_1ch, Segmentation_Dataset_2ch, Segmentation_Dataset_3ch
 ):
-    data_path = os.path.abspath("../Raw_Datasets/FUCCI_data")
+    data_path = os.path.abspath("../Raw_Datasets/FUCCI_data_binned")
 
     if not os.path.exists(data_path):
         raise FileNotFoundError(data_path)
@@ -73,9 +73,9 @@ def load_custom_dataset(
         item_3ch["image"] = image
 
         # Important, this is the handle to call the dataset when training.
-        item_1ch["parent_dataset"] = "FUCCI_1CH_Dataset"
-        item_2ch["parent_dataset"] = "FUCCI_2CH_Dataset"
-        item_3ch["parent_dataset"] = "FUCCI_3CH_Dataset"
+        item_1ch["parent_dataset"] = "FUCCI_1CH_binned_Dataset"
+        item_2ch["parent_dataset"] = "FUCCI_2CH_binned_Dataset"
+        item_3ch["parent_dataset"] = "FUCCI_3CH_binned_Dataset"
         item_1ch["licence"] = "CC BY 4.0"
         item_2ch["licence"] = "CC BY 4.0"
         item_3ch["licence"] = "CC BY 4.0"
@@ -84,9 +84,9 @@ def load_custom_dataset(
         # If the segmentation task is not for cells, or the pixel size is not known, you can comment this line out.
         # However, we strongly recommend you make sure the labels are of reasonable size, and fairly uniform across the dataset.
         # A good label area is around 300 pixels. See load_Cellpose in data_download.py for an example of how to load a dataset without pixel size.
-        item_1ch["pixel_size"] = 0.3
-        item_2ch["pixel_size"] = 0.3
-        item_3ch["pixel_size"] = 0.3
+        item_1ch["pixel_size"] = 0.6
+        item_2ch["pixel_size"] = 0.6
+        item_3ch["pixel_size"] = 0.6
         item_1ch["image_modality"] = "Fluorescence"
         item_2ch["image_modality"] = "Fluorescence"
         item_3ch["image_modality"] = "Fluorescence"
@@ -143,11 +143,11 @@ Segmentation_Dataset_1ch, Segmentation_Dataset_2ch, Segmentation_Dataset_3ch = (
 path = os.environ["INSTANSEG_DATASET_PATH"]
 
 # You can change the name to whatever you want, but make sure it ends with "_dataset.pth".
-torch.save(Segmentation_Dataset_1ch, os.path.join(path, "fucci_1_channels_dataset.pth"))
+torch.save(Segmentation_Dataset_1ch, os.path.join(path, "fucci_1_channels_binned_dataset.pth"))
 
-torch.save(Segmentation_Dataset_2ch, os.path.join(path, "fucci_2_channels_dataset.pth"))
+torch.save(Segmentation_Dataset_2ch, os.path.join(path, "fucci_2_channels_binned_dataset.pth"))
 
-torch.save(Segmentation_Dataset_3ch, os.path.join(path, "fucci_3_channels_dataset.pth"))
+torch.save(Segmentation_Dataset_3ch, os.path.join(path, "fucci_3_channels_binned_dataset.pth"))
 
 
 # To train a model on your custom dataset, run the following command in your terminal:
