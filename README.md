@@ -19,6 +19,9 @@ The data structure is:
 
 ## Segmentation
 
+A summary, related scripts, and validation data can be found in the
+`segmentation` folder.
+
 ## Classification
 
 The sensor can distinguish three cell cycle phases:
@@ -48,8 +51,6 @@ In the following, the steps for individual architectures that we tested are docu
 **Please feel free to share training recipes for other networks!**
 
 ## StarDist
-
-## EmbedSeg
 
 ## InstanSeg
 
