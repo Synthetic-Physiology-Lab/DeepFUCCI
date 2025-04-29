@@ -121,16 +121,36 @@ for m in (
     "accuracy",
     "f1",
 ):
-    plt.plot(taus, [s._asdict()[m] for s in stats_1d], ".-", lw=2, label="1D")
-    plt.plot(taus, [s._asdict()[m] for s in stats_2d], ".-", lw=2, label="2D")
-    plt.plot(taus, [s._asdict()[m] for s in stats_3d], ".-", lw=2, label="3D")
-    plt.xlabel(r"IoU threshold $\tau$")
+    plt.plot(taus, [s._asdict()[m] for s in stats_1d], "v-", lw=2, label="1 CH", color="black")
+    plt.plot(taus, [s._asdict()[m] for s in stats_2d], "o-", lw=2, label="2 CH", color="black")
+    plt.plot(taus, [s._asdict()[m] for s in stats_3d], "s-", lw=2, label="3 CH", color="black")
+    plt.xlabel("IoU threshold")
     plt.ylabel(f"{m.capitalize()} value")
     plt.grid()
     plt.legend()
+    plt.ylim(0, 1.05)
 
-    plt.savefig(f"{m}.pdf")
+    plt.savefig(f"validation_{m}.pdf")
     plt.show()
+
+for idx, stats in enumerate([stats_1d, stats_2d, stats_3d]):
+    marker = ["v-", "o-", "s-"][idx]
+    for index, m in enumerate(["fp", "tp", "fn"]):
+        label = None
+        if idx == 0:
+            label = m.upper()
+        
+        plt.plot(taus, [s._asdict()[m] for s in stats], marker, lw=2, label=label)
+    plt.gca().set_prop_cycle(None)
+plt.xlabel("IoU threshold")
+plt.ylabel("Number of labels")
+plt.grid()
+plt.legend()
+
+plt.savefig("validation_label_numbers.pdf")
+plt.show()
+
+
 
 print("Stats at 0.5 IoU: ", stats_1d[4])
 print("Stats at 0.5 IoU: ", stats_2d[4])
