@@ -74,8 +74,6 @@ for image_file, mask_file in zip(image_files, mask_files):
     bg_props_df = pd.DataFrame(bg_props)
     # has only one entry per channel because background is ignored
     background = bg_props_df.iloc[0].to_numpy()
-    print(data)
-    print(background)
     estimate_cell_phase_from_max_intensity(
         data,
         channels,
