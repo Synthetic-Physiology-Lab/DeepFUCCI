@@ -1,11 +1,10 @@
-import sys
+import json
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-from glob import glob
 from tqdm import tqdm
 from tifffile import imread
-from csbdeep.utils import Path, normalize
+from csbdeep.utils import normalize
 
 from stardist import (
     fill_label_holes,
@@ -19,51 +18,17 @@ matplotlib.rcParams["image.interpolation"] = "none"
 np.random.seed(42)
 lbl_cmap = random_label_cmap()
 
-X = sorted(glob("training_data_tiled_strict_classified/images/*.tif"))
-Y = sorted(glob("training_data_tiled_strict_classified/masks/*.tif"))
-assert all(Path(x).name == Path(y).name for x, y in zip(X, Y))
+training_data_dir = "training_data_tiled_strict_classified_new"
+# use the same data split as in training
+with open(f"{training_data_dir}/dataset_split.json") as fp:
+    dataset_split = json.load(fp)
 
-X = list(map(imread, X))
-Y = list(map(imread, Y))
-n_channel = 2
+X = [imread(f"{training_data_dir}/images/{img_name}") for img_name in dataset_split["validation"]]
+Y = [fill_label_holes(imread(f"{training_data_dir}/masks/{img_name}")) for img_name in dataset_split["validation"]]
 
 axis_norm = (0, 1)  # normalize channels independently
-if n_channel > 1:
-    print(
-        "Normalizing image channels %s."
-        % ("jointly" if axis_norm is None or 2 in axis_norm else "independently")
-    )
-    sys.stdout.flush()
-rng = np.random.RandomState(42)
-ind = rng.permutation(len(X))
-n_val = max(1, int(round(0.15 * len(ind))))
-ind_train, ind_val = ind[:-n_val], ind[-n_val:]
-
-X = [normalize(X[i], 1, 99.8, axis=axis_norm) for i in tqdm(ind_val)]
-Y = [fill_label_holes(Y[i]) for i in tqdm(ind_val)]
-
-print("number of images: %3d" % len(X))
-
-
-def plot_img_label(img, lbl, img_title="image", lbl_title="label", **kwargs):
-    fig, (ai, al) = plt.subplots(
-        1, 2, figsize=(12, 5), gridspec_kw=dict(width_ratios=(1.25, 1))
-    )
-    if len(img.shape) == 3 and img.shape[2] == 2:
-        print(img.shape)
-        img = np.concatenate(
-            (img, np.zeros(shape=(img.shape[0], img.shape[1], 1))), axis=-1
-        )
-        print(img.shape)
-
-    im = ai.imshow(img, cmap="gray", clim=(0, 1))
-
-    ai.set_title(img_title)
-    fig.colorbar(im, ax=ai)
-    al.imshow(lbl, cmap=lbl_cmap)
-    al.set_title(lbl_title)
-    plt.tight_layout()
-
+X = [normalize(x, 1, 99.8, axis=axis_norm) for x in tqdm(X)]
+print("number of validation images: %3d" % len(X))
 
 # Use OpenCL-based computations for data generator during training (requires 'gputools')
 use_gpu = gputools_available()
@@ -121,9 +86,10 @@ for m in (
     "accuracy",
     "f1",
 ):
-    plt.plot(taus, [s._asdict()[m] for s in stats_1d], "v-", lw=2, label="1 CH", color="black")
-    plt.plot(taus, [s._asdict()[m] for s in stats_2d], "o-", lw=2, label="2 CH", color="black")
-    plt.plot(taus, [s._asdict()[m] for s in stats_3d], "s-", lw=2, label="3 CH", color="black")
+    plt.clf()
+    plt.plot(taus, [s._asdict()[m] for s in stats_1d], ls="dashdot", lw=2, label="1 CH", color="black")
+    plt.plot(taus, [s._asdict()[m] for s in stats_2d], ls="dotted", lw=2, label="2 CH", color="black")
+    plt.plot(taus, [s._asdict()[m] for s in stats_3d], ls="dashed", lw=2, label="3 CH", color="black")
     plt.xlabel("IoU threshold")
     plt.ylabel(f"{m.capitalize()} value")
     plt.grid()
@@ -133,14 +99,15 @@ for m in (
     plt.savefig(f"validation_{m}.pdf")
     plt.show()
 
+plt.clf()
 for idx, stats in enumerate([stats_1d, stats_2d, stats_3d]):
-    marker = ["v-", "o-", "s-"][idx]
+    linestyle = ["dashdot", "dotted", "dashed"][idx]
     for index, m in enumerate(["fp", "tp", "fn"]):
         label = None
         if idx == 0:
             label = m.upper()
         
-        plt.plot(taus, [s._asdict()[m] for s in stats], marker, lw=2, label=label)
+        plt.plot(taus, [s._asdict()[m] for s in stats], ls=linestyle, lw=2, label=label)
     plt.gca().set_prop_cycle(None)
 plt.xlabel("IoU threshold")
 plt.ylabel("Number of labels")
@@ -149,8 +116,6 @@ plt.legend()
 
 plt.savefig("validation_label_numbers.pdf")
 plt.show()
-
-
 
 print("Stats at 0.5 IoU: ", stats_1d[4])
 print("Stats at 0.5 IoU: ", stats_2d[4])
