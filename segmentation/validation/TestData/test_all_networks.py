@@ -1,10 +1,10 @@
-import json
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+from glob import glob
 from tqdm import tqdm
 from tifffile import imread
-from csbdeep.utils import normalize
+from csbdeep.utils import Path, normalize
 
 from stardist import (
     fill_label_holes,
@@ -18,17 +18,20 @@ matplotlib.rcParams["image.interpolation"] = "none"
 np.random.seed(42)
 lbl_cmap = random_label_cmap()
 
-training_data_dir = "training_data_tiled_strict_classified_new"
-# use the same data split as in training
-with open(f"{training_data_dir}/dataset_split.json") as fp:
-    dataset_split = json.load(fp)
+X = sorted(glob("test_data_tiled/images/*.tif"))
+Y = sorted(glob("test_data_tiled/masks/*.tif"))
+assert all(Path(x).name == Path(y).name for x, y in zip(X, Y))
+assert len(X) > 0
 
-X = [imread(f"{training_data_dir}/images/{img_name}") for img_name in dataset_split["validation"]]
-Y = [fill_label_holes(imread(f"{training_data_dir}/masks/{img_name}")) for img_name in dataset_split["validation"]]
+X = list(map(imread, X))
+Y = list(map(imread, Y))
+print(X[0].shape)
 
 axis_norm = (0, 1)  # normalize channels independently
+#X = [normalize(np.moveaxis(x, 0, -1), 1, 99.8, axis=axis_norm) for x in tqdm(X)]
 X = [normalize(x, 1, 99.8, axis=axis_norm) for x in tqdm(X)]
-print("number of validation images: %3d" % len(X))
+Y = [fill_label_holes(y) for y in tqdm(Y)]
+print("number of test images: %3d" % len(X))
 
 # Use OpenCL-based computations for data generator during training (requires 'gputools')
 use_gpu = gputools_available()
@@ -41,8 +44,8 @@ if use_gpu:
     limit_gpu_memory(0.1, total_memory=50000)
 
 model_1d = StarDist2D(None, name="stardist", basedir="training_1_channel_stardist/models")
-model_2d = StarDist2D(None, name="stardist", basedir="training_2_channels_stardist//models")
-model_3d = StarDist2D(None, name="stardist", basedir="training_3_channels_stardist//models")
+model_2d = StarDist2D(None, name="stardist", basedir="training_2_channels_stardist/models")
+model_3d = StarDist2D(None, name="stardist", basedir="training_3_channels_stardist/models")
 
 Y_val_pred_1d = [
     model_1d.predict_instances(
@@ -58,6 +61,7 @@ Y_val_pred_2d = [
     for x in tqdm(X)
 ]
 
+print(X[0].shape)
 Y_val_pred_3d = [
     model_3d.predict_instances(
         x
@@ -96,7 +100,7 @@ for m in (
     plt.legend()
     plt.ylim(0, 1.05)
 
-    plt.savefig(f"validation_{m}.pdf")
+    plt.savefig(f"test{m}.pdf")
     plt.show()
 
 plt.clf()
@@ -114,9 +118,9 @@ plt.ylabel("Number of labels")
 plt.grid()
 plt.legend()
 
-plt.savefig("validation_label_numbers.pdf")
+plt.savefig("test_label_numbers.pdf")
 plt.show()
 
-print("Stats at 0.5 IoU: ", stats_1d[4])
-print("Stats at 0.5 IoU: ", stats_2d[4])
-print("Stats at 0.5 IoU: ", stats_3d[4])
+print("Stats at 0.5 IoU for 1 CH: ", stats_1d[4])
+print("Stats at 0.5 IoU for 2 CH: ", stats_2d[4])
+print("Stats at 0.5 IoU for 3 CH: ", stats_3d[4])
