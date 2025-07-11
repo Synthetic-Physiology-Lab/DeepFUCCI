@@ -1,4 +1,5 @@
-from cellpose import transforms, dynamics, vit_sam, train
+from cellpose import transforms, dynamics, vit_sam, train, models, metrics
+from scipy.stats import mode
 from glob import glob
 import os
 from cellpose import io
@@ -93,6 +94,7 @@ def convert_fucci_phase_data(data_dir, out_dir, n_classes=3):
                 data=fastremap.renumber(masks.astype("uint16"))[0],
                 compression="zlib",
             )
+            tifffile.imwrite(root_val / f"FUCCI_data_{i}_classes.tif", data=cp_all, compression="zlib")
         else:
             raise RuntimeError(f"Image {Path(img_file).name} not known")
 
@@ -197,6 +199,129 @@ def train_net(root0, n_classes=3):
     )
 
 
+def test_net(root0, n_classes=3):
+    results_dir = Path("results_cellpose_sam")
+    results_dir.mkdir(exist_ok=True, parents=True)
+    model = models.CellposeModel(gpu=True, pretrained_model="cpsam")
+    net = initialize_class_net(nclasses=n_classes, device=torch.device("cuda"))
+    net.load_model(
+        "models/FUCCI_batch_size_8",
+        device=torch.device("cuda"),
+        strict=False,
+    )
+    net.eval()
+    model.net = net
+    model.net_ortho = None
+    img_files = [
+        f
+        for f in natsorted(root0.glob("*tif"))
+        if "_masks" not in str(f)
+        and "_flows" not in str(f)
+        and "_classes" not in str(f)
+    ]
+    test_imgs = [io.imread(f) for f in img_files]
+    masks_true = [
+        io.imread(str(f).replace(".tif", "_masks.tif")).squeeze() for f in img_files
+    ]
+    classes_true = [
+        io.imread(str(f).replace(".tif", "_classes.tif")) for f in img_files
+    ]
+
+    masks_pred, flows, styles = model.eval(
+        test_imgs,
+        diameter=None,
+        augment=False,
+        bsize=256,
+        tile_overlap=0.1,
+        batch_size=64,
+        flow_threshold=0.4,
+        cellprob_threshold=0,
+    )
+
+    classes_pred = [s.squeeze().argmax(axis=-1) for s in styles]
+
+    aps_img, errors_img = compute_ap_pq(
+        masks_true, classes_true, masks_pred, classes_pred
+    )
+
+    print("Errors image: ", np.nanmean(errors_img, axis=0), np.nanmean(errors_img))
+    print("APS image: ", np.nanmean(aps_img, axis=0), np.nanmean(aps_img))
+
+    np.save(
+        f"{results_dir}/monusac_cellposeSAM.npy",
+        {
+            "errors": errors_img,
+            "aps": aps_img,
+            "masks_true": masks_true,
+            "masks_pred": masks_pred,
+            "classes_true": classes_true,
+            "classes": classes_pred,
+            "imgs": test_imgs,
+            "img_files": img_files,
+        },
+    )
+
+
+def compute_ap_pq(masks_true, classes_true, masks_pred, classes_pred, n_classes=3):
+    nimg = len(masks_true)
+    iou_all, tp_all, fp_all, fn_all = (
+        np.zeros((nimg, n_classes), "float32"),
+        np.zeros((nimg, n_classes), "int"),
+        np.zeros((nimg, n_classes), "int"),
+        np.zeros((nimg, n_classes), "int"),
+    )
+    for i in range(nimg):
+        masks_pred0 = masks_pred[i].copy()
+        class_true = classes_true[i].copy()
+        class0 = classes_pred[i].copy()
+        masks_true0 = masks_true[i].copy()
+        masks_true0 = fastremap.renumber(masks_true0)[0]
+
+        # remove masks with class 0 (background)
+        masks_pred0[class0 == 0] = 0
+        masks_pred0 = fastremap.renumber(masks_pred0)[0]
+
+        # class id for each mask is mode of class ids in mask
+        cid = np.array(
+            [mode(class0[masks_pred0 == j])[0] for j in range(1, masks_pred0.max() + 1)]
+        )
+        tid = np.array(
+            [
+                mode(class_true[masks_true0 == j])[0]
+                for j in range(1, masks_true0.max() + 1)
+            ]
+        )
+
+        # match ground truth and predicted masks
+        iout, inds = metrics.mask_ious(masks_true0, masks_pred0)
+        inds[iout < 0.5] = 0  # keep matches > 0.5 IoU
+        # class for matched masks
+        cmatch = cid[[ind - 1 for ind in inds if ind != 0]]
+        # class for true masks that are matched
+        tmatch = tid[inds != 0]
+        inds_match = inds[inds != 0]
+        for c in range(n_classes):
+            # true positive if predicted mask class matches true mask class
+            tps = (cmatch == c + 1) * (tmatch == c + 1)
+            iou_all[i, c] = (iout[inds != 0] * tps).sum()  # scale by IoU
+            tp_all[i, c] = tps.sum()
+            # false negative for all missed masks with class == c+1
+            fn_all[i, c] = (tid == c + 1).sum() - tps.sum()
+            # false positive if predicted mask class == c+1 and does not match true mask class
+            not_tp = np.ones(masks_pred0.max(), "bool")
+            not_tp[inds_match[tps] - 1] = False
+            fp_all[i, c] = (
+                cid[not_tp] == c + 1
+            ).sum()  # ((cmatch == c+1) * (tmatch != c+1)).sum() +
+        assert (fp_all[i].sum() + tp_all[i].sum()) == masks_pred0.max()
+        assert (fn_all[i].sum() + tp_all[i].sum()) == masks_true0.max()
+
+    aps_img = tp_all / (tp_all + fp_all + fn_all)
+    errors_img = (fp_all + fn_all) / (tp_all + fn_all)
+
+    errors_img[np.isinf(errors_img)] = np.nan
+    return aps_img, errors_img
+
 if __name__ == "__main__":
     fucci_data_dir = Path("training_data_tiled_strict_classified_new")
     out_dir = Path("cellpose_sam_dataset")
@@ -205,3 +330,5 @@ if __name__ == "__main__":
     convert_fucci_phase_data(fucci_data_dir, out_dir)
     print("Training network")
     train_net(out_dir)
+    print("Run validation")
+    test_net(out_dir / "validation")
