@@ -24,6 +24,10 @@ matplotlib.rcParams["image.interpolation"] = "none"
 np.random.seed(42)
 lbl_cmap = random_label_cmap()
 
+# plt.style.use('tableau-colorblind10')
+# plt.style.use('seaborn-v0_8-colorblind')
+plt.style.use('grayscale')
+
 
 def class_from_res(res):
     # cast to int (for json)
@@ -47,11 +51,6 @@ X = [f"{training_data_dir}/images/{img_name}" for img_name in dataset_split["val
 Y = [f"{training_data_dir}/masks/{img_name}" for img_name in dataset_split["validation"]]
 C = [f"{training_data_dir}/classes/{img_name.replace('.tif', '.json')}" for img_name in dataset_split["validation"]]
 assert all(Path(x).name == Path(y).name for x, y in zip(X, Y))
-
-# comment later
-X = X[:5]
-Y = Y[:5]
-C = C[:5]
 
 X = list(map(imread, X))
 Y = list(map(imread, Y))
@@ -161,7 +160,7 @@ for m in (
     plt.legend()
     plt.ylim(0, 1.05)
 
-    plt.savefig(f"classifiction_nw_{m}.pdf")
+    plt.savefig(f"classification_nw_{m}.pdf")
     plt.show()
 
 plt.clf()
@@ -179,17 +178,25 @@ plt.ylabel("Number of labels")
 plt.grid()
 plt.legend()
 
-plt.savefig("classifiction_nw_label_numbers.pdf")
+plt.savefig("classification_nw_label_numbers.pdf")
 plt.show()
 
 print("Stats at 0.5 IoU: ", stats_1d[4])
 print("Stats at 0.5 IoU: ", stats_2d[4])
 print("Stats at 0.5 IoU: ", stats_3d[4])
 
-results_dict = {}
-for i in range(3):
-    results_dict[f"class_gt_{i + 1}"] = 0
-    results_dict[f"class_pred_{i + 1}"] = 0
+def prepare_results_dict():
+    results_dict = {}
+    for i in range(3):
+        results_dict[f"class_gt_{i + 1}"] = 0
+        results_dict[f"class_pred_{i + 1}"] = 0
+    return results_dict
+
+results_dict_fp = prepare_results_dict()
+results_dict_1ch = prepare_results_dict()
+results_dict_2ch = prepare_results_dict()
+results_dict_3ch = prepare_results_dict()
+
 # check classification
 for y_1ch, y_2ch, y_3ch, y_gt, c_1ch, c_2ch, c_3ch, c_fp, c_gt in zip(labels_1d, labels_2d, labels_3d, Y, classes_1d, classes_2d, classes_3d, classes_fucciphase, C):
     with open(c_gt) as fp:
@@ -197,27 +204,152 @@ for y_1ch, y_2ch, y_3ch, y_gt, c_1ch, c_2ch, c_3ch, c_fp, c_gt in zip(labels_1d,
     # get labels overlapping enough with GT
     _, matching_labels = group_matching_labels([y_gt, y_2ch], thresh=0.5)
     label_pairs = np.column_stack([matching_labels.flatten(), y_2ch.flatten()])
-    print(label_pairs.shape)
     label_pairs = np.unique(label_pairs, axis=0)
-    print(label_pairs.shape)
-    print(label_pairs)
+    pair_values_gt, pair_count_gt = np.unique(label_pairs[:, 0], return_counts=True)
+    pair_values_matched, pair_count_matched = np.unique(label_pairs[:, 1], return_counts=True)
+    if not np.all(pair_count_gt == 1):
+        print(label_pairs)
+        print(pair_values_gt, pair_count_gt)
+        raise ValueError("Matched more than one label")
+    if not np.all(pair_count_matched == 1):
+        print(label_pairs)
+        print(pair_values_matched, pair_count_matched)
+        raise ValueError("Matched more than one label")
+
     all_gt_labels = np.unique(y_gt)
     matching_labels = np.unique(matching_labels)
-    print(all_gt_labels)
-    print(matching_labels)
     common_labels = np.intersect1d(all_gt_labels, matching_labels)
-    print(common_labels)
     for label in common_labels:
         if label == 0:
             continue
         pred_label = label_pairs[label_pairs[:, 0] == label][0][1]
-        print(label)
-        print(pred_label)
         try:
-            predicted_class = c_fp[pred_label]
+            predicted_class_fp = c_fp[pred_label]
+            predicted_class_2ch = c_2ch[pred_label]
         except KeyError:
-            predicted_class = c_fp[str(pred_label)]
+            predicted_class_fp = c_fp[str(pred_label)]
+            predicted_class_2ch = c_2ch[str(pred_label)]
         gt_class = cls_gt[str(label)]
-        results_dict[f"class_gt_{gt_class}"] += 1
-        results_dict[f"class_pred_{predicted_class}"] += 1
-print(results_dict)
+        results_dict_fp[f"class_gt_{gt_class}"] += 1
+        results_dict_2ch[f"class_gt_{gt_class}"] += 1
+        if gt_class == predicted_class_fp:
+            results_dict_fp[f"class_pred_{predicted_class_fp}"] += 1
+        if gt_class  == predicted_class_2ch:
+            results_dict_2ch[f"class_pred_{predicted_class_2ch}"] += 1
+
+    # for 1 CH
+    _, matching_labels = group_matching_labels([y_gt, y_1ch], thresh=0.5)
+    label_pairs = np.column_stack([matching_labels.flatten(), y_1ch.flatten()])
+    label_pairs = np.unique(label_pairs, axis=0)
+    pair_values_gt, pair_count_gt = np.unique(label_pairs[:, 0], return_counts=True)
+    pair_values_matched, pair_count_matched = np.unique(label_pairs[:, 1], return_counts=True)
+    if not np.all(pair_count_gt == 1):
+        print(label_pairs)
+        print(pair_values_gt, pair_count_gt)
+        raise ValueError("Matched more than one label")
+    if not np.all(pair_count_matched == 1):
+        print(label_pairs)
+        print(pair_values_matched, pair_count_matched)
+        raise ValueError("Matched more than one label")
+
+    all_gt_labels = np.unique(y_gt)
+    matching_labels = np.unique(matching_labels)
+    common_labels = np.intersect1d(all_gt_labels, matching_labels)
+    for label in common_labels:
+        if label == 0:
+            continue
+        pred_label = label_pairs[label_pairs[:, 0] == label][0][1]
+        try:
+            predicted_class_1ch = c_1ch[pred_label]
+        except KeyError:
+            predicted_class_1ch = c_1ch[str(pred_label)]
+        gt_class = cls_gt[str(label)]
+        results_dict_1ch[f"class_gt_{gt_class}"] += 1
+        if gt_class  == predicted_class_1ch:
+            results_dict_1ch[f"class_pred_{predicted_class_1ch}"] += 1
+
+
+    # for 2 CH
+    _, matching_labels = group_matching_labels([y_gt, y_3ch], thresh=0.5)
+    label_pairs = np.column_stack([matching_labels.flatten(), y_3ch.flatten()])
+    label_pairs = np.unique(label_pairs, axis=0)
+    pair_values_gt, pair_count_gt = np.unique(label_pairs[:, 0], return_counts=True)
+    pair_values_matched, pair_count_matched = np.unique(label_pairs[:, 1], return_counts=True)
+    if not np.all(pair_count_gt == 1):
+        print(label_pairs)
+        print(pair_values_gt, pair_count_gt)
+        raise ValueError("Matched more than one label")
+    if not np.all(pair_count_matched == 1):
+        print(label_pairs)
+        print(pair_values_matched, pair_count_matched)
+        raise ValueError("Matched more than one label")
+
+    all_gt_labels = np.unique(y_gt)
+    matching_labels = np.unique(matching_labels)
+    common_labels = np.intersect1d(all_gt_labels, matching_labels)
+    for label in common_labels:
+        if label == 0:
+            continue
+        pred_label = label_pairs[label_pairs[:, 0] == label][0][1]
+        try:
+            predicted_class_3ch = c_3ch[pred_label]
+        except KeyError:
+            predicted_class_3ch = c_3ch[str(pred_label)]
+        gt_class = cls_gt[str(label)]
+        results_dict_3ch[f"class_gt_{gt_class}"] += 1
+        if gt_class  == predicted_class_3ch:
+            results_dict_3ch[f"class_pred_{predicted_class_3ch}"] += 1
+
+x = np.arange(3)  # the label locations
+width = 0.75 / 4  # the width of the bars
+multiplier = 0
+
+plt.clf()
+fig, ax = plt.subplots(layout='constrained')
+
+labels = ["FUCCIphase", "1CH", "2CH", "3CH"]
+cell_cycle_phases = ["G1", "G1/S", "S/G2/M"]
+hatches = ["/", "\\", "|", "-"]
+for result_dict in [results_dict_fp, results_dict_1ch, results_dict_2ch, results_dict_3ch]:
+    offset = width * multiplier
+    measurement = [np.round(result_dict[f"class_pred_{cls_id}"] / result_dict[f"class_gt_{cls_id}"], 2) for cls_id in range(1, 4)]
+    rects = ax.bar(x + offset, measurement, width, label=labels[multiplier], hatch=hatches[multiplier], edgecolor="black")
+    ax.bar_label(rects, padding=3)
+    multiplier += 1
+
+# Add some text for labels, title and custom x-axis tick labels, etc.
+ax.set_ylabel('Accuracy')
+ax.set_title('Classification approach')
+ax.set_xticks(x + width, cell_cycle_phases)
+ax.set_yticks(np.arange(0, 1.01, 0.2))
+ax.legend(loc='upper left', ncols=4)
+ax.set_ylim(0, 1.2)
+plt.savefig("bar_chart_phases.pdf")
+plt.show()
+
+multiplier = 0
+
+plt.clf()
+fig, ax = plt.subplots(layout='constrained')
+
+colors=['darkgray','gray','dimgray','lightgray']
+labels = ["FUCCIphase", "1CH", "2CH", "3CH"]
+cell_cycle_phases = ["G1", "G1/S", "S/G2/M"]
+
+hatches = ["/", "\\", "|", "-"]
+for result_dict in [results_dict_fp, results_dict_1ch, results_dict_2ch, results_dict_3ch]:
+    offset = width * multiplier
+    measurement = [np.round(result_dict[f"class_pred_{cls_id}"] / result_dict[f"class_gt_{cls_id}"], 2) for cls_id in range(1, 4)]
+    rects = ax.bar(x + offset, measurement, width, label=labels[multiplier], hatch=hatches[multiplier], color=colors[multiplier], edgecolor="black")
+    ax.bar_label(rects, padding=3)
+    multiplier += 1
+
+# Add some text for labels, title and custom x-axis tick labels, etc.
+ax.set_ylabel('Accuracy')
+ax.set_title('Classification approach')
+ax.set_xticks(x + width, cell_cycle_phases)
+ax.set_yticks(np.arange(0, 1.01, 0.2))
+ax.legend(loc='upper left', ncols=4)
+ax.set_ylim(0, 1.2)
+plt.savefig("bar_chart_phase_gray.pdf")
+plt.show()
