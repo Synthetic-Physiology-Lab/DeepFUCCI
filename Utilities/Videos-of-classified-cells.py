@@ -12,6 +12,8 @@ from csbdeep.utils import normalize
 from napari_animation import Animation
 
 viewer = napari.Viewer()
+viewer.window.resize(1200, 800)
+viewer.reset_view()
 
 
 def phase_from_class(class_id):
@@ -212,6 +214,32 @@ pts_3CH, shapes_3CH = add_bbox_layers_to_napari(
     all_bbox_colors_3_CH,
 )
 
+old_time = -1
+
+
+def update_slider(event):
+    time = viewer.dims.current_step[0]
+    global old_time
+    if time != old_time:
+        old_time = time
+    else:
+        return
+    time = 15.0 * time
+    viewer.text_overlay.text = f"{round(time)} min "
+
+
+viewer.text_overlay.color = "white"
+viewer.text_overlay.blending = "translucent_no_depth"
+viewer.text_overlay.position = "top_left"
+viewer.text_overlay.font_size = 18
+viewer.text_overlay.visible = True
+viewer.dims.events.current_step.connect(update_slider)
+
+viewer.scale_bar.font_size = 0
+viewer.scale_bar.unit = "um"
+viewer.scale_bar.font_size = 0
+viewer.scale_bar.visible = True
+
 animation = Animation(viewer)
 
 tubulin_layer.visible = True
@@ -299,7 +327,7 @@ animation.capture_keyframe()
 # last frame
 viewer.dims.current_step = (Y_1CH.shape[0], 0, 0)
 animation.capture_keyframe(steps=Y_1CH.shape[0] - 1)
-animation.animate("movie_2ch.mp4", canvas_only=True, fps=4, quality=9, scale_factor=1.0)
+animation.animate("movie_3ch.mp4", canvas_only=True, fps=4, quality=9, scale_factor=1.0)
 
 
 napari.run()
