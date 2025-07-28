@@ -7,6 +7,7 @@ from stardist.models import StarDist2D
 from tqdm import tqdm
 import csbdeep
 from basicpy import BaSiC
+from pathlib import Path
 
 with open("metadata.yml", "r") as metadatafile:
     metadata = yaml.load(metadatafile, yaml.BaseLoader)
@@ -28,9 +29,9 @@ labels_1d = np.zeros(shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dim
 labels_2d = np.zeros(shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dims.X), dtype=np.uint16)
 labels_3d = np.zeros(shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dims.X), dtype=np.uint16)
 
-model_1d = StarDist2D(None, name='stardist_1_channel', basedir='models')
-model_2d = StarDist2D(None, name='stardist_2_channel', basedir='models')
-model_3d = StarDist2D(None, name='stardist_3_channel', basedir='models')
+model_1d = StarDist2D(None, name='stardist_1_channel', basedir=Path.home() / 'models')
+model_2d = StarDist2D(None, name='stardist_2_channel', basedir=Path.home() / 'models')
+model_3d = StarDist2D(None, name='stardist_3_channel', basedir=Path.home() / 'models')
 
 reference_pixel_size = 0.3357
 actual_pixel_size = img_stream.physical_pixel_sizes.X
