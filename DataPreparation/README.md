@@ -54,9 +54,11 @@ To facilitate the labeling, there is an option to tile
 a single frame in `view_tiled_frame_in_napari.py`.
 For example, the tiling will work for 9 tiles like:
 
-1|4|7
-2|5|8
-3|6|9
+```
+1 | 4 | 7
+2 | 5 | 8
+3 | 6 | 9
+```
 
 Thus, you can open the video and the tiled frame next to each
 other and then correct the segmentation.
