@@ -13,9 +13,6 @@ from stardist import (
 from stardist.models import Config2D, StarDist2D
 
 
-# show plots?
-show = False
-
 training_data_dir = "../training_data"
 
 with open(f"{training_data_dir}/dataset_split.json") as fp:

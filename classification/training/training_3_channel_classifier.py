@@ -15,6 +15,17 @@ from stardist.models import Config2D, StarDist2D
 
 training_data_dir = "../training_data"
 
+
+def read_json(path):
+    with open(path) as fp:
+        data = json.load(fp)
+    data_list = []
+    for key, value in sorted(data.items()):
+        data_list.append((int(key), value))
+
+    return dict(data_list)
+
+
 with open(f"{training_data_dir}/dataset_split.json") as fp:
     dataset_split = json.load(fp)
 
@@ -34,8 +45,17 @@ Y_val = [
     fill_label_holes(imread(f"{training_data_dir}/masks/{img_name}"))
     for img_name in dataset_split["validation"]
 ]
+C_trn = [
+    read_json(f"{training_data_dir}/classes/{img_name.replace('.tif', '.json')}")
+    for img_name in dataset_split["training"]
+]
+C_val = [
+    read_json(f"{training_data_dir}/classes/{img_name.replace('.tif', '.json')}")
+    for img_name in dataset_split["validation"]
+]
 
 n_channel = 3
+n_classes = 3
 
 axis_norm = (0, 1)  # normalize channels independently
 if n_channel > 1:
@@ -66,6 +86,7 @@ conf = Config2D(
     grid=grid,
     use_gpu=use_gpu,
     n_channel_in=n_channel,
+    n_classes=n_classes,
 )
 print(conf)
 vars(conf)
@@ -77,7 +98,7 @@ if use_gpu:
     # by TensorFlow to leave some to OpenCL-based computations
     limit_gpu_memory(0.1, total_memory=50000)
 
-model = StarDist2D(conf, name="stardist", basedir="models")
+model = StarDist2D(conf, name="stardist_multiclass", basedir="models")
 
 median_size = calculate_extents(list(Y_trn), np.median)
 fov = np.array(model._axes_tile_overlap("YX"))
@@ -123,7 +144,8 @@ def augmenter(x, y):
 model.train(
     X_trn,
     Y_trn,
-    validation_data=(X_val, Y_val),
+    classes=C_trn,
+    validation_data=(X_val, Y_val, C_val),
     augmenter=augmenter,
     epochs=1000,
     steps_per_epoch=200,
