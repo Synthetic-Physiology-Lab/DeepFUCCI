@@ -1,8 +1,0 @@
-filename: "test.nd2"
-channels:
-  magenta: 0 
-  actin: 1 
-  tubulin: 2 
-  cyan: 3
-
-nucleus_diameter: 20
