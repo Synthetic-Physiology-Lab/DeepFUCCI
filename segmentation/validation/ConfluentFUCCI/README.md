@@ -21,4 +21,17 @@ nuclei_green_v2
 nuclei_red_v2
 ```
 
-Now, you can use their model. Find an example in `test_confluent.py`.
+Now, you can use their model.
+
+Run `confluent_fucci_on_validation_data.py` to check the performance
+on our validation data.
+
+
+**Note:**
+
+The authors used Cellpose v2, so you must install cellpose < 4.
+In addition, the reference pixel size was not specified.
+The reference diameter was 18 pixels.
+We found that dividing the reference diameter with our pixel size
+yielded a good segmentation, so probably the authors had
+a reference pixel size of 1 micron.

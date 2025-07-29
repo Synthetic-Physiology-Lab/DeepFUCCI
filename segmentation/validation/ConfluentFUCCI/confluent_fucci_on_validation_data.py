@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from tifffile import imread
+from skimage.io import imread
 from csbdeep.utils import normalize
 from cellpose import models
 import pyclesperanto_prototype as cle
@@ -11,7 +11,6 @@ import pyclesperanto_prototype as cle
 from stardist import (
     fill_label_holes,
     random_label_cmap,
-    gputools_available,
 )
 from stardist.matching import matching_dataset
 
@@ -19,28 +18,38 @@ matplotlib.rcParams["image.interpolation"] = "none"
 np.random.seed(42)
 lbl_cmap = random_label_cmap()
 
-training_data_dir = "../training_data_tiled_strict_classified_new"
+training_data_dir = "training_data"
+
 # use the same data split as in training
 with open(f"{training_data_dir}/dataset_split.json") as fp:
     dataset_split = json.load(fp)
 
-X = [imread(f"{training_data_dir}/images/{img_name}") for img_name in dataset_split["validation"]]
-Y_val = [fill_label_holes(imread(f"{training_data_dir}/masks/{img_name}")) for img_name in dataset_split["validation"]]
+X = [
+    imread(f"{training_data_dir}/images/{img_name}")
+    for img_name in dataset_split["validation"]
+]
+Y_val = [
+    fill_label_holes(imread(f"{training_data_dir}/masks/{img_name}"))
+    for img_name in dataset_split["validation"]
+]
 
 axis_norm = (0, 1)  # normalize channels independently
 X_val = [normalize(x, 1, 99.8, axis=axis_norm) for x in tqdm(X)]
 print("number of validation images: %3d" % len(X))
 
 reference_diameter = 18
+reference_pixel_size = 0.67
 pixel_size = 0.33
-diameter = reference_diameter / pixel_size
+diameter = reference_diameter * reference_pixel_size / pixel_size
 model_green = models.CellposeModel(gpu=True, model_type="nuclei_green_v2")
 model_red = models.CellposeModel(gpu=True, model_type="nuclei_red_v2")
+
 
 def get_confluentfucci_masks(img_cyan, img_magenta):
     masks_cyan, _, _ = model_green.eval(img_cyan, diameter=diameter)
     masks_magenta, _, _ = model_red.eval(img_magenta, diameter=diameter)
     return cle.merge_touching_labels(masks_cyan + masks_magenta).get()
+
 
 Y_val_pred = [get_confluentfucci_masks(x[..., 1], x[..., 0]) for x in tqdm(X_val)]
 
