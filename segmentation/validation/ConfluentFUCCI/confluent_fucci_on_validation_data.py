@@ -38,9 +38,8 @@ X_val = [normalize(x, 1, 99.8, axis=axis_norm) for x in tqdm(X)]
 print("number of validation images: %3d" % len(X))
 
 reference_diameter = 18
-reference_pixel_size = 0.67
 pixel_size = 0.33
-diameter = reference_diameter * reference_pixel_size / pixel_size
+diameter = reference_diameter / pixel_size
 model_green = models.CellposeModel(gpu=True, model_type="nuclei_green_v2")
 model_red = models.CellposeModel(gpu=True, model_type="nuclei_red_v2")
 
@@ -48,7 +47,15 @@ model_red = models.CellposeModel(gpu=True, model_type="nuclei_red_v2")
 def get_confluentfucci_masks(img_cyan, img_magenta):
     masks_cyan, _, _ = model_green.eval(img_cyan, diameter=diameter)
     masks_magenta, _, _ = model_red.eval(img_magenta, diameter=diameter)
-    return cle.merge_touching_labels(masks_cyan + masks_magenta).get()
+    # refine masks
+    masks_cyan = cle.opening_labels(masks_cyan,
+                                    radius=3)
+    masks_magenta = cle.opening_labels(masks_magenta,
+                                    radius=3)
+
+    masks = cle.merge_touching_labels(masks_cyan + masks_magenta)
+    masks = cle.closing_labels(cle.label(masks), radius=3).get()
+    return masks
 
 
 Y_val_pred = [get_confluentfucci_masks(x[..., 1], x[..., 0]) for x in tqdm(X_val)]

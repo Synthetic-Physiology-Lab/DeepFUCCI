@@ -50,9 +50,10 @@ Examples are shown in the `Tracking` folder.
 ## Tested networks
 
 We (re-)trained the following networks with our network and provide scripts for it:
-* StarDist
-* Cellpose-SAM
+* StarDist (see `requirements_stardist.txt` for used versions)
+* Cellpose-SAM (see `requirements_instanseg_cellpose_sam.txt`, can be installed together)
 * InstanSeg (only segmentation)
+* ConfluentFUCCI (only segmentation, `requirements_confluentfucci.txt`, more details on installation in `Segmentation` folder)
 
 **Please feel free to share training recipes for other networks!**
 
