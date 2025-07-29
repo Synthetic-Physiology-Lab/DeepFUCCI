@@ -109,3 +109,10 @@ The script for tiling and filtering is called:
 ```
 python tile_training_data.py
 ```
+
+## Split dataset
+
+We split the dataset randomly into training and validation data.
+For this, execute `split_training_set.py`.
+It will store a JSON file with the files belonging to the respective
+group.
