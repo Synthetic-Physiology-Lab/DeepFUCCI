@@ -1,3 +1,5 @@
+# Adapted from https://github.com/MouseLand/cellpose/blob/main/paper/cpsam/semantic.py
+
 from cellpose import transforms, dynamics, vit_sam, train, models, metrics
 from scipy.stats import mode
 from glob import glob
@@ -323,7 +325,7 @@ def compute_ap_pq(masks_true, classes_true, masks_pred, classes_pred, n_classes=
     return aps_img, errors_img
 
 if __name__ == "__main__":
-    fucci_data_dir = Path("training_data_tiled_strict_classified_new")
+    fucci_data_dir = Path("training_data")
     out_dir = Path("cellpose_sam_dataset")
 
     print("Converting data")
