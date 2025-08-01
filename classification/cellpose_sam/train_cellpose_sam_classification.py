@@ -250,7 +250,7 @@ def test_net(root0, n_classes=3):
     print("APS image: ", np.nanmean(aps_img, axis=0), np.nanmean(aps_img))
 
     np.save(
-        f"{results_dir}/monusac_cellposeSAM.npy",
+        f"{results_dir}/deepfucci_cellposeSAM.npy",
         {
             "errors": errors_img,
             "aps": aps_img,

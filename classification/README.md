@@ -20,4 +20,27 @@ repository.
 
 ## Using the model
 
-TODO
+Essentially, it boils down to loading the model
+and predicting instances
+
+```
+model = StarDist2D(None, name="stardist_multiclass", basedir=Path.home() / "models")
+label, res = model.predict_instances(img)
+```
+
+Examples of the usage are in the validation scripts 
+`validation_classifier_*.py`.
+The performance of the deep learning
+network was compared to the intensity-based classifier
+implemented in fucciphase: `check_classification_against_intensity_threshold.py`
+
+
+Other examples:
+
+* CellMAPtracer: Here, the network is relabeled to match the PIP-FUCCI logic.
+
+## Cellpose-SAM
+
+As an alternative to the StarDist-based network,
+we trained an instance of Cellpose-SAM.
+Details are provided in the `cellpose_sam` folder.

@@ -15,7 +15,7 @@ cl_colors = [
 def fig5(save_fig=False):
     aps = []
     errors = []
-    dat = np.load("monusac_cellposeSAM.npy", allow_pickle=True).item()
+    dat = np.load("deepfucci_cellposeSAM.npy", allow_pickle=True).item()
     aps.append(np.array(dat["aps"]))
     errors.append(np.array(dat["errors"]))
 
