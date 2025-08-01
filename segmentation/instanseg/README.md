@@ -1,19 +1,12 @@
 # InstanSeg segmentation
 
-To use InstanSeg, please checkout the Github repository:
-
-```
-git clone https://github.com/instanseg/instanseg.git
-cd instanseg
-```
-
-We used InstanSeg at commit cb1bb10e234e7f6e322235786bc1a4a9409ad832
-but you should try on the latest commit or release because InstanSeg
-is still work in progress.
+To use InstanSeg, please install it as indicated in the requirements
+file specified in the repository.
 
 Copy the FUCCI dataset to `instanseg/Raw_Datasets` and name it `FUCCI_data`.
 Copy the `load_custom_dataset.py` to the `instanseg/notebooks` directory
 and run it there.
+Check also the InstanSeg github repository for more details.
 
 
 Then execute the following code to train:
