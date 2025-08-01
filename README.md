@@ -41,6 +41,8 @@ You can classify manually or you use [fucciphase](https://github.com/Synthetic-P
 to obtain an initial classification based on intensities.
 More details can be found in the `DataPreparation` folder.
 
+Scripts can be found in the `Classification` folder.
+
 ## Tracking
 
 The segmented cells can be tracked, which yields cell-specific FUCCI intensities.
