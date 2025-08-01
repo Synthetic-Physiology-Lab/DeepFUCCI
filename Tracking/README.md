@@ -16,3 +16,7 @@ so that cell divisions can be detected from the spot name.
 Then, the tracking result should be exported as an XML file (few cells).
 In case of many cells, rather the CSV format should be used and the spots
 should be exported.
+
+An example notebook to process the tracking data and visualize the result in Napari can be found in **TODO** (add when final figure format is ready).
+Here, also the DTW distortion score is computed and cells are classified based on it.
+More details can be found in the `fucciphase_processing` folder. 
