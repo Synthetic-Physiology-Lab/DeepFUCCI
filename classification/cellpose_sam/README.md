@@ -11,7 +11,10 @@ You can run `train_cellpose_sam_classification.py`.
 Make sure that the path to the training data directory
 is correctly specified at the end of the script.
 
+To visually validate the trained model, have a look at
+`plot_cellpose_sam_with_napari.py`.
+
 
 ## Using it
 
-TODO
+Run the model as in the script `predict_cellpose.py`.
