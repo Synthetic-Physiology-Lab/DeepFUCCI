@@ -1,7 +1,6 @@
 import json
 import sys
 import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from skimage.io import imread
@@ -9,17 +8,12 @@ from csbdeep.utils import normalize
 
 from stardist import (
     fill_label_holes,
-    random_label_cmap,
     gputools_available,
 )
 from stardist.matching import matching_dataset
 from stardist.models import StarDist2D
 
-matplotlib.rcParams["image.interpolation"] = "none"
-np.random.seed(42)
-lbl_cmap = random_label_cmap()
-
-training_data_dir = "training_data_tiled_strict_classified_new"
+training_data_dir = "training_data"
 # use the same data split as in training
 with open(f"{training_data_dir}/dataset_split.json") as fp:
     dataset_split = json.load(fp)
@@ -63,16 +57,12 @@ if use_gpu:
 
 model = StarDist2D(None, name="stardist_multiclass", basedir="training_2_channels_stardist_classifier/models")
 
-i = 8
-label, res = model.predict_instances(X_val[i], n_tiles=model._guess_n_tiles(X_val[i]))
-
 # the class object ids are stored in the 'results' dict and correspond to the label ids in increasing order 
-
 def class_from_res(res):
     cls_dict = dict((i+1,c) for i,c in enumerate(res['class_id']))
     return cls_dict
 
-Y_val_pred, res_val_pred = tuple(zip(*[model.predict_instances(x, n_tiles=model._guess_n_tiles(x), show_tile_progress=False)
+Y_val_pred, res_val_pred = tuple(zip(*[model.predict_instances(x)
               for x in tqdm(X_val[:])]))
 
 taus = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
@@ -103,7 +93,7 @@ for class_id in range(1, 4):
             matching_dataset(class_y_vals, class_y_vals_pred, thresh=t, show_progress=False)
             for t in tqdm(taus)
         ]
-        accuracy_at_0_5_IOU.append(stats[4]._asdict()["precision"])
+        accuracy_at_0_5_IOU.append(stats[4]._asdict()["accuracy"])
 
         if class_id == class_id_pred:
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
@@ -132,5 +122,7 @@ for class_id in range(1, 4):
             plt.savefig(f"metrics_2ch_class_{class_id}.png")
             plt.close()
 
+print("Pairs:")
 print(class_id_pairs)
+print("Accuracy:")
 print(accuracy_at_0_5_IOU)
