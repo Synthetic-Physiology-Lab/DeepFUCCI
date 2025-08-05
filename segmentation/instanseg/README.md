@@ -3,6 +3,8 @@
 To use InstanSeg, please install it as indicated in the requirements
 file specified in the repository.
 
+Check out the folder structure of the InstanSeg repository: https://github.com/instanseg/instanseg/tree/v0.1.0
+The following description follows this.
 Copy the FUCCI dataset to `instanseg/Raw_Datasets` and name it `FUCCI_data`.
 Copy the `load_custom_dataset.py` to the `instanseg/notebooks` directory
 and run it there.
