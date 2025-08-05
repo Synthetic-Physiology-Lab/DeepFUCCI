@@ -29,7 +29,7 @@ label, res = model.predict_instances(img)
 ```
 
 Examples of the usage are in the validation scripts 
-`validation_classifier_*.py`.
+`validation_classifier_*.py` in the `validation` folder.
 The performance of the deep learning
 network was compared to the intensity-based classifier
 implemented in fucciphase: `check_classification_against_intensity_threshold.py`
