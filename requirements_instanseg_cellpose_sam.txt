@@ -2,6 +2,7 @@ torch==2.6.0
 torchvision==0.21.0
 bioimageio.core~=0.7.0
 bioimageio.spec~=0.5.3.5
+xarray==2025.1.2
 monai
 hyperopt
 instanseg-torch==0.0.9
