@@ -59,6 +59,23 @@ We (re-)trained the following networks with our network and provide scripts for 
 
 **Please feel free to share training recipes for other networks!**
 
+## Known issues
+
+StarDist does not yet support NumPy v2.
+If an error like
+
+```
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.2.6 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+```
+
+occurs, downgrade NumPy by running:
+```
+pip install numpy==1.26.4
+```
+
 ## Cite us
 
 TODO
