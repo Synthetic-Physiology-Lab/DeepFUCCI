@@ -28,9 +28,19 @@ python train.py -ci True -data fucci_3_channels_dataset.pth -source "[FUCCI_3CH_
 
 ## Test the models
 
-Run the two scripts to test the models and obtain metrics like the F1 score:
+Set proper environment variables:
 
 ```
+export INSTANSEG_MODEL_PATH=~/Documents/github/instanseg/instanseg/models
+export INSTANSEG_BIOIMAGEIO_PATH=~/Documents/github/instanseg/instanseg/bioimageio_models
+export INSTANSEG_TORCHSCRIPT_PATH=~/Documents/github/instanseg/instanseg/torchscripts
+export EXAMPLE_IMAGE_PATH=~/Documents/github/instanseg/instanseg/examples
+```
+
+Run the two scripts to test the models and obtain metrics like the F1 score and export the model:
+
+```
+
 python test.py --model_folder fucci_3ch -set Validation --optimize_hyperparameters True --dataset fucci_3_channels
-python test.py --model_folder fucci_3ch -set Test --params best_params --dataset fucci_3_channels
+python test.py --model_folder fucci_3ch -set Test --params best_params --dataset fucci_3_channels -export_to_bioimageio True -export_to_torchscript True
 ```
