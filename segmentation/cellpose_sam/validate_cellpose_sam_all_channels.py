@@ -15,8 +15,14 @@ training_data_dir = "../training_data_tiled_strict_classified_new"
 with open(f"{training_data_dir}/dataset_split.json") as fp:
     dataset_split = json.load(fp)
 
-X = [imread(f"{training_data_dir}/images/{img_name}") for img_name in dataset_split["validation"]]
-Y = [fill_label_holes(imread(f"{training_data_dir}/masks/{img_name}")) for img_name in dataset_split["validation"]]
+X = [
+    imread(f"{training_data_dir}/images/{img_name}")
+    for img_name in dataset_split["validation"]
+]
+Y = [
+    fill_label_holes(imread(f"{training_data_dir}/masks/{img_name}"))
+    for img_name in dataset_split["validation"]
+]
 
 print("number of validation images: %3d" % len(X))
 
@@ -60,9 +66,30 @@ for m in (
     "f1",
 ):
     plt.clf()
-    plt.plot(taus, [s._asdict()[m] for s in stats_1d], ls="dashdot", lw=2, label="1 CH", color="black")
-    plt.plot(taus, [s._asdict()[m] for s in stats_2d], ls="dotted", lw=2, label="2 CH", color="black")
-    plt.plot(taus, [s._asdict()[m] for s in stats_3d], ls="dashed", lw=2, label="3 CH", color="black")
+    plt.plot(
+        taus,
+        [s._asdict()[m] for s in stats_1d],
+        ls="dashdot",
+        lw=2,
+        label="1 CH",
+        color="black",
+    )
+    plt.plot(
+        taus,
+        [s._asdict()[m] for s in stats_2d],
+        ls="dotted",
+        lw=2,
+        label="2 CH",
+        color="black",
+    )
+    plt.plot(
+        taus,
+        [s._asdict()[m] for s in stats_3d],
+        ls="dashed",
+        lw=2,
+        label="3 CH",
+        color="black",
+    )
     plt.xlabel("IoU threshold")
     plt.ylabel(f"{m.capitalize()} value")
     plt.grid()
@@ -79,7 +106,7 @@ for idx, stats in enumerate([stats_1d, stats_2d, stats_3d]):
         label = None
         if idx == 0:
             label = m.upper()
-        
+
         plt.plot(taus, [s._asdict()[m] for s in stats], ls=linestyle, lw=2, label=label)
     plt.gca().set_prop_cycle(None)
 plt.xlabel("IoU threshold")
