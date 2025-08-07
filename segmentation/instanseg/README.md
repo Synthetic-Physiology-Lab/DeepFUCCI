@@ -44,3 +44,9 @@ Run the two scripts to test the models and obtain metrics like the F1 score and 
 python test.py --model_folder fucci_3ch -set Validation --optimize_hyperparameters True --dataset fucci_3_channels
 python test.py --model_folder fucci_3ch -set Test --params best_params --dataset fucci_3_channels -export_to_bioimageio True -export_to_torchscript True
 ```
+
+## Validate the models on the DeepFUCCI dataset
+
+Check the scripts
+`validate_all_networks.py`
+`validate_channel_invariant_network.py`

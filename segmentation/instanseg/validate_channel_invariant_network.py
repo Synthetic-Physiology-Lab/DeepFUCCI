@@ -1,0 +1,161 @@
+import os
+import json
+import numpy as np
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+from skimage.io import imread
+from csbdeep.utils import normalize
+from instanseg import InstanSeg
+from pathlib import Path
+
+from stardist import (
+    fill_label_holes,
+    gputools_available,
+)
+from stardist.matching import matching_dataset
+
+training_data_dir = "training_data"
+# use the same data split as in training
+with open(f"{training_data_dir}/dataset_split.json") as fp:
+    dataset_split = json.load(fp)
+
+
+os.environ["INSTANSEG_BIOIMAGEIO_PATH"] = str(
+    Path.home() / "Documents/github/instanseg/instanseg/bioimageio_models"
+)
+X = [
+    imread(f"{training_data_dir}/images/{img_name}")
+    for img_name in dataset_split["validation"]
+]
+Y = [
+    fill_label_holes(imread(f"{training_data_dir}/masks/{img_name}"))
+    for img_name in dataset_split["validation"]
+]
+
+axis_norm = (0, 1)  # normalize channels independently
+X = [normalize(x, 1, 99.8, axis=axis_norm) for x in tqdm(X)]
+print("number of validation images: %3d" % len(X))
+
+# Use OpenCL-based computations for data generator during training (requires 'gputools')
+use_gpu = gputools_available()
+print("Using GPU: ", use_gpu)
+
+model = InstanSeg(model_type="fucci_channel_invariant", verbosity=1)
+
+pixel_size = 0.335
+
+Y_val_pred_1d = [
+    model.eval_small_image(
+        image=x[..., 2],
+        pixel_size=pixel_size,
+        return_image_tensor=False,
+        target="nuclei",
+    )
+    .squeeze()
+    .numpy()
+    .astype(np.uint16)
+    for x in tqdm(X)
+]
+
+Y_val_pred_2d = [
+    model.eval_small_image(
+        image=np.moveaxis(x[..., 0:2], -1, 0),
+        pixel_size=pixel_size,
+        return_image_tensor=False,
+        target="nuclei",
+    )
+    .squeeze()
+    .numpy()
+    .astype(np.uint16)
+    for x in tqdm(X)
+]
+
+Y_val_pred_3d = [
+    model.eval_small_image(
+        image=np.moveaxis(x, -1, 0),
+        pixel_size=pixel_size,
+        return_image_tensor=False,
+        target="nuclei",
+    )
+    .squeeze()
+    .numpy()
+    .astype(np.uint16)
+    for x in tqdm(X)
+]
+
+taus = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+stats_1d = [
+    matching_dataset(Y, Y_val_pred_1d, thresh=t, show_progress=False)
+    for t in tqdm(taus)
+]
+
+stats_2d = [
+    matching_dataset(Y, Y_val_pred_2d, thresh=t, show_progress=False)
+    for t in tqdm(taus)
+]
+
+stats_3d = [
+    matching_dataset(Y, Y_val_pred_3d, thresh=t, show_progress=False)
+    for t in tqdm(taus)
+]
+
+
+for m in (
+    "accuracy",
+    "f1",
+):
+    plt.clf()
+    plt.plot(
+        taus,
+        [s._asdict()[m] for s in stats_1d],
+        ls="dashdot",
+        lw=2,
+        label="1 CH",
+        color="black",
+    )
+    plt.plot(
+        taus,
+        [s._asdict()[m] for s in stats_2d],
+        ls="dotted",
+        lw=2,
+        label="2 CH",
+        color="black",
+    )
+    plt.plot(
+        taus,
+        [s._asdict()[m] for s in stats_3d],
+        ls="dashed",
+        lw=2,
+        label="3 CH",
+        color="black",
+    )
+    plt.xlabel("IoU threshold")
+    plt.ylabel(f"{m.capitalize()} value")
+    plt.grid()
+    plt.legend()
+    plt.ylim(0, 1.05)
+
+    plt.savefig(f"validation_custom_instanseg_ci_{m}.pdf")
+    plt.show()
+
+plt.clf()
+for idx, stats in enumerate([stats_1d, stats_2d, stats_3d]):
+    linestyle = ["dashdot", "dotted", "dashed"][idx]
+    for index, m in enumerate(["fp", "tp", "fn"]):
+        label = None
+        if idx == 0:
+            label = m.upper()
+
+        plt.plot(taus, [s._asdict()[m] for s in stats], ls=linestyle, lw=2, label=label)
+    plt.gca().set_prop_cycle(None)
+plt.xlabel("IoU threshold")
+plt.ylabel("Number of labels")
+plt.grid()
+plt.legend()
+
+plt.savefig("validation_custom_instanseg_ci_label_numbers.pdf")
+plt.show()
+
+print("Stats at 0.5 IoU for 1 CH: ", stats_1d[4])
+print("Stats at 0.5 IoU for 2 CH: ", stats_2d[4])
+print("Stats at 0.5 IoU for 3 CH: ", stats_3d[4])
