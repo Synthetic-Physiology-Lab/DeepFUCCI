@@ -30,7 +30,17 @@ Using the script `segment-nuclei.py` prepares three files:
 They are containing the masks predicted by the three
 pre-trained StarDist networks.
 **Note: You need to enter the model name and reference
-pixel size.**
+pixel size. The pixel size here is correct for the 
+pretrained network.**
+
+If you want to use the classifier network and
+save also the predicted classes, use
+`segment_and_classify_nuclei.py`.
+It will save the masks in 
+`stardist_labels_{1,2,3}_channel_classifier.tif`
+and the related classes (the key is the mask label
+and the value the related class) in
+`classes_{1,2,3}_channel.tif`.
 
 ## Inspect and curate the labels
 

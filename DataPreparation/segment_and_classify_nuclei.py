@@ -8,6 +8,7 @@ from tqdm import tqdm
 import csbdeep
 from basicpy import BaSiC
 from pathlib import Path
+import json
 
 with open("metadata.yml", "r") as metadatafile:
     metadata = yaml.load(metadatafile, yaml.BaseLoader)
@@ -22,6 +23,12 @@ for channel in channels:
         print("Flatfield correction will not be applied")
 
 
+def class_from_res(res):
+    # cast to int (for json)
+    cls_dict = dict((int(i+1),int(c)) for i,c in enumerate(res['class_id']))
+    return cls_dict
+
+
 filename = metadata["filename"]
 
 img_stream = AICSImage(filename)
@@ -29,13 +36,17 @@ labels_1d = np.zeros(shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dim
 labels_2d = np.zeros(shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dims.X), dtype=np.uint16)
 labels_3d = np.zeros(shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dims.X), dtype=np.uint16)
 
-model_1d = StarDist2D(None, name='stardist_1_channel_latest', basedir=Path.home() / 'models')
-model_2d = StarDist2D(None, name='stardist_2_channel_latest', basedir=Path.home() / 'models')
-model_3d = StarDist2D(None, name='stardist_3_channel_latest', basedir=Path.home() / 'models')
+model_1d = StarDist2D(None, name='stardist_1_channel_classifier_latest', basedir=Path.home() / 'models')
+model_2d = StarDist2D(None, name='stardist_2_channel_classifier_latest', basedir=Path.home() / 'models')
+model_3d = StarDist2D(None, name='stardist_3_channel_classifier_latest', basedir=Path.home() / 'models')
 
 reference_pixel_size = 0.3357
 actual_pixel_size = img_stream.physical_pixel_sizes.X
 scale = actual_pixel_size / reference_pixel_size
+
+classes_1d = []
+classes_2d = []
+classes_3d = []
 
 if flatfield_correction:
     basic_tubulin = BaSiC.load_model("basic_model_tubulin")
@@ -61,15 +72,26 @@ for T in tqdm(range(img_stream.dims.T)):
     # 1 channel model
     labels, details = model_1d.predict_instances(img_tubulin, scale=scale)
     labels_1d[T] = labels[:]
+    classes_1d.append(class_from_res(details))
 
     # 2 channel model
     labels, details = model_2d.predict_instances(np.moveaxis(np.stack([img_cyan, img_magenta]), 0, -1), scale=scale)
     labels_2d[T] = labels[:]
+    classes_2d.append(class_from_res(details))
 
     # 3 channel model
     labels, details = model_3d.predict_instances(np.moveaxis(np.stack([img_cyan, img_magenta, img_tubulin]), 0, -1), scale=scale)
     labels_3d[T] = labels[:]
+    classes_3d.append(class_from_res(details))
 
-imsave("stardist_labels_3_channel.tif", labels_3d)
-imsave("stardist_labels_2_channel.tif", labels_2d)
-imsave("stardist_labels_1_channel.tif", labels_1d)
+
+imsave("stardist_labels_3_channel_classifier.tif", labels_3d, compression="zlib")
+imsave("stardist_labels_2_channel_classifier.tif", labels_2d, compression="zlib")
+imsave("stardist_labels_1_channel_classifier.tif", labels_1d, compression="zlib")
+
+with open("classes_1_channel.json", "w") as fp:
+    json.dump(classes_1d, fp)
+with open("classes_2_channel.json", "w") as fp:
+    json.dump(classes_2d, fp)
+with open("classes_3_channel.json", "w") as fp:
+    json.dump(classes_3d, fp)
