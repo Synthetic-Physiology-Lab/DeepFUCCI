@@ -15,5 +15,11 @@ Run `train_Cellpose-SAM.py`.
 If the script does not work, make the batch size smaller.
 
 ## Validation
+
 Run `validate_cellpose_sam_all_channels.py`, which gives you
 values that can be compared to the other segmentation networks.
+
+We also checked the pure segmentation performance of the 
+Cellpose-SAM instance that was trained to segment and classify
+at the same time. You can repeat this experiment by running
+`validate_cellpose_sam_classifier_all_channels.py`
