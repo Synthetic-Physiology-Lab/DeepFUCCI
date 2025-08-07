@@ -14,9 +14,9 @@ Check also the InstanSeg github repository for more details.
 Then execute the following code to train:
 ```
 cd instanseg/scripts
-python train.py -data fucci_1_channels_dataset.pth -dim_in 1 -source "[FUCCI_1CH_Dataset]" --experiment_str fucci_1ch
-python train.py -data fucci_2_channels_dataset.pth -dim_in 2 -source "[FUCCI_2CH_Dataset]" --experiment_str fucci_2ch
-python train.py -data fucci_3_channels_dataset.pth -dim_in 3 -source "[FUCCI_3CH_Dataset]" --experiment_str fucci_3ch
+python train.py -data fucci_1_channels_dataset.pth -dim_in 1 -source "[FUCCI_1CH_Dataset]" --experiment_str fucci_1ch -pixel_size 0.335
+python train.py -data fucci_2_channels_dataset.pth -dim_in 2 -source "[FUCCI_2CH_Dataset]" --experiment_str fucci_2ch -pixel_size 0.335
+python train.py -data fucci_3_channels_dataset.pth -dim_in 3 -source "[FUCCI_3CH_Dataset]" --experiment_str fucci_3ch -pixel_size 0.335
 ```
 
 
