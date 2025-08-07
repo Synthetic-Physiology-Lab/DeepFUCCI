@@ -55,7 +55,7 @@ def make_bbox(bbox_extents):
 
 X = sorted(glob("images/*.tif"))
 Y = sorted(glob("masks/*.tif"))
-assert len(X) >0
+assert len(X) > 0
 assert all(Path(x).name == Path(y).name for x, y in zip(X, Y))
 
 X = list(map(imread, X))

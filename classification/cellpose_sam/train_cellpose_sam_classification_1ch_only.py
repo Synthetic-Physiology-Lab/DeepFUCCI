@@ -1,14 +1,8 @@
-# Adapted from https://github.com/MouseLand/cellpose/blob/main/paper/cpsam/semantic.py
-
-from cellpose import transforms, dynamics, vit_sam, train, models, metrics
+from cellpose import vit_sam, train, models, metrics
 from scipy.stats import mode
-from glob import glob
-import os
 from cellpose import io
 import numpy as np
-import json
 import torch
-import tifffile
 import fastremap
 from torch import nn
 from tqdm import trange
@@ -16,93 +10,6 @@ from natsort import natsorted
 from pathlib import Path
 
 logger, log_file = io.logger_setup()
-
-
-def convert_fucci_phase_data(data_dir, out_dir, n_classes=3):
-    img_files = [f for f in sorted(glob(os.path.join(data_dir, "images", "*.*")))]
-    lbl_files = [f for f in sorted(glob(os.path.join(data_dir, "masks", "*.*")))]
-    cls_files = [f for f in sorted(glob(os.path.join(data_dir, "classes", "*.*")))]
-    with open(os.path.join(data_dir, "dataset_split.json")) as fp:
-        dataset_split = json.load(fp)
-
-    root_train = out_dir / "train/"
-    root_train.mkdir(exist_ok=True, parents=True)
-    root_val = out_dir / "validation/"
-    root_val.mkdir(exist_ok=True, parents=True)
-
-    for i, (img_file, lbl_file, cls_file) in enumerate(
-        zip(img_files, lbl_files, cls_files)
-    ):
-        img = io.imread(img_file)
-        masks = io.imread(lbl_file)
-
-        with open(cls_file) as fp:
-            classes = json.load(fp)
-
-        # reshape to patch
-        psize = 256
-        img = img[:psize, :psize, :]
-        masks = masks[:psize, :psize]
-
-        img_shape = img.shape[:2]
-
-        # to store masks
-        # one classs added for background
-        n_ary_masks = np.zeros((n_classes, img_shape[0], img_shape[1]), "uint16")
-
-        for gt in np.unique(masks):
-            if gt == 0:
-                continue
-            try:
-                label_id = classes[gt]
-            except KeyError:
-                label_id = classes[str(gt)]
-            # zero-indexed but classes are one-indexed!
-            n_ary_masks[label_id - 1][masks == gt] = gt
-
-        img = transforms.normalize_img(img, axis=-1).transpose(2, 0, 1)[:3]
-        lbl_all = dynamics.labels_to_flows([masks], device=torch.device("cuda"))[0]
-        # img shape changed three lines before
-        cp_all = np.zeros(img.shape[1:], "float32")
-        print(cp_all.shape)
-        for c in range(n_ary_masks.shape[0]):
-            print("C: ", c, " ", np.sum(n_ary_masks[c] > 0))
-            cp_all[n_ary_masks[c] > 0] = c + 1
-
-        lbls = np.concatenate(
-            (lbl_all[:1], cp_all[np.newaxis, ...], lbl_all[1:]), axis=0
-        )
-        if Path(img_file).name in dataset_split["training"]:
-            tifffile.imwrite(
-                root_train / f"FUCCI_data_{i}.tif", data=img, compression="zlib"
-            )
-            tifffile.imwrite(
-                root_train / f"FUCCI_data_{i}_flows.tif", data=lbls, compression="zlib"
-            )
-            tifffile.imwrite(
-                root_train / f"FUCCI_data_{i}_masks.tif",
-                data=fastremap.renumber(masks.astype("uint16"))[0],
-                compression="zlib",
-            )
-        elif Path(img_file).name in dataset_split["validation"]:
-            tifffile.imwrite(
-                root_val / f"FUCCI_data_{i}.tif", data=img, compression="zlib"
-            )
-            tifffile.imwrite(
-                root_val / f"FUCCI_data_{i}_flows.tif", data=lbls, compression="zlib"
-            )
-            tifffile.imwrite(
-                root_val / f"FUCCI_data_{i}_masks.tif",
-                data=fastremap.renumber(masks.astype("uint16"))[0],
-                compression="zlib",
-            )
-            tifffile.imwrite(
-                root_val / f"FUCCI_data_{i}_classes.tif",
-                data=cp_all,
-                compression="zlib",
-            )
-        else:
-            raise RuntimeError(f"Image {Path(img_file).name} not known")
 
 
 def initialize_class_net(nclasses=3, device=torch.device("cuda")):
@@ -158,6 +65,8 @@ def train_net(root0, n_classes=3):
     print("loading images")
     for i in trange(len(train_files)):
         img = io.imread(train_files[i])
+        # only tubulin channel
+        img = img[2, ...]
         train_data.append(img)
 
     print("loading labels")
@@ -200,18 +109,18 @@ def train_net(root0, n_classes=3):
         scale_range=scale_range,
         min_train_masks=0,
         nimg_test_per_epoch=len(test_data),
-        model_name=f"FUCCI_batch_size_{batch_size}",
+        model_name=f"FUCCI_tubulin_batch_size_{batch_size}",
         class_weights=1.0 / pclass,
     )
 
 
 def test_net(root0, n_classes=3):
-    results_dir = Path("results_cellpose_sam")
+    results_dir = Path("results_cellpose_sam_1ch")
     results_dir.mkdir(exist_ok=True, parents=True)
     model = models.CellposeModel(gpu=True, pretrained_model="cpsam")
     net = initialize_class_net(nclasses=n_classes, device=torch.device("cuda"))
     net.load_model(
-        "models/FUCCI_batch_size_8",
+        "models/FUCCI_tubulin_batch_size_8",
         device=torch.device("cuda"),
         strict=False,
     )
@@ -225,7 +134,7 @@ def test_net(root0, n_classes=3):
         and "_flows" not in str(f)
         and "_classes" not in str(f)
     ]
-    test_imgs = [io.imread(f) for f in img_files]
+    test_imgs = [io.imread(f)[2, ...] for f in img_files]
     masks_true = [
         io.imread(str(f).replace(".tif", "_masks.tif")).squeeze() for f in img_files
     ]
@@ -254,7 +163,7 @@ def test_net(root0, n_classes=3):
     print("APS image: ", np.nanmean(aps_img, axis=0), np.nanmean(aps_img))
 
     np.save(
-        f"{results_dir}/deepfucci_cellposeSAM.npy",
+        f"{results_dir}/tubulin_cellposeSAM.npy",
         {
             "errors": errors_img,
             "aps": aps_img,
@@ -330,12 +239,11 @@ def compute_ap_pq(masks_true, classes_true, masks_pred, classes_pred, n_classes=
 
 
 if __name__ == "__main__":
-    fucci_data_dir = Path("training_data")
+    # fucci_data_dir = Path("training_data_tiled_strict_classified_new")
     out_dir = Path("cellpose_sam_dataset")
 
     print("Converting data")
-    convert_fucci_phase_data(fucci_data_dir, out_dir)
+    # convert_fucci_phase_data(fucci_data_dir, out_dir)
     print("Training network")
     train_net(out_dir)
-    print("Run validation")
     test_net(out_dir / "validation")

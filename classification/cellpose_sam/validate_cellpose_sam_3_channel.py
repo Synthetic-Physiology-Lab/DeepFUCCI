@@ -1,5 +1,4 @@
 import json
-import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -11,12 +10,12 @@ from pathlib import Path
 
 from stardist import (
     fill_label_holes,
-    gputools_available,
 )
 from stardist.matching import matching_dataset
 from cellpose import vit_sam, models
 
 # --- Start of Cellpose-specific initialization ---
+
 
 def initialize_class_net(nclasses=3, device=torch.device("cuda")):
     """Initializes the classification network for Cellpose."""
@@ -57,6 +56,7 @@ def initialize_class_net(nclasses=3, device=torch.device("cuda")):
     net.to(device)
     return net
 
+
 # --- End of Cellpose-specific initialization ---
 
 
@@ -65,18 +65,29 @@ training_data_dir = "training_data_tiled_strict_classified_new"
 with open(f"{training_data_dir}/dataset_split.json") as fp:
     dataset_split = json.load(fp)
 
+
 def read_json(path):
     with open(path) as fp:
         data = json.load(fp)
     data_list = []
     for key, value in sorted(data.items()):
         data_list.append((int(key), value))
-        
+
     return dict(data_list)
 
-X = [imread(f"{training_data_dir}/images/{img_name}") for img_name in dataset_split["validation"]]
-Y = [fill_label_holes(imread(f"{training_data_dir}/masks/{img_name}")) for img_name in dataset_split["validation"]]
-C_val = [read_json(f"{training_data_dir}/classes/{img_name.replace('.tif', '.json')}") for img_name in dataset_split["validation"]]
+
+X = [
+    imread(f"{training_data_dir}/images/{img_name}")
+    for img_name in dataset_split["validation"]
+]
+Y = [
+    fill_label_holes(imread(f"{training_data_dir}/masks/{img_name}"))
+    for img_name in dataset_split["validation"]
+]
+C_val = [
+    read_json(f"{training_data_dir}/classes/{img_name.replace('.tif', '.json')}")
+    for img_name in dataset_split["validation"]
+]
 
 
 n_classes = 3
@@ -88,7 +99,6 @@ Y_val = [fill_label_holes(y) for y in tqdm(Y)]
 use_gpu = torch.cuda.is_available()
 print("Using GPU: ", use_gpu)
 
-# --- Replace StarDist model with Cellpose model ---
 device = torch.device("cuda" if use_gpu else "cpu")
 model = models.CellposeModel(gpu=use_gpu, pretrained_model="cpsam")
 net = initialize_class_net(nclasses=n_classes, device=device)
@@ -102,8 +112,8 @@ net.eval()
 model.net = net
 model.net_ortho = None
 
-
 # --- Define conversion function and predict with Cellpose ---
+
 
 def class_from_res_cellpose(class_masks, masks):
     """
@@ -120,30 +130,21 @@ def class_from_res_cellpose(class_masks, masks):
         cls_dict[int(label)] = int(class_id)
     return cls_dict
 
+
 # Perform prediction with Cellpose for each validation image
 Y_val_pred = []
 res_val_pred = []
-for x in tqdm(X_val[:]):
+for x in tqdm(X_val):
     masks, flows, styles = model.eval(
-        [x],
-        diameter=None,
-        augment=False,
-        bsize=256,
-        tile_overlap=0.1,
+        x,
         batch_size=64,
-        flow_threshold=0.4,
-        cellprob_threshold=0,
     )
-    classes_pred = [s.squeeze().argmax(axis=-1) for s in styles]
-    
-    # Assuming single image prediction, so we take the first element
-    y_pred = masks[0]
-    class_mask_pred = classes_pred[0]
-    
-    Y_val_pred.append(y_pred)
-    
+    classes_pred = styles.squeeze().argmax(axis=-1)
+
+    Y_val_pred.append(masks)
+
     # Convert to StarDist dictionary format
-    class_dict = class_from_res_cellpose(class_mask_pred, y_pred)
+    class_dict = class_from_res_cellpose(classes_pred, masks)
     res_val_pred.append(class_dict)
 
 
@@ -157,7 +158,9 @@ for class_id in range(1, 4):
         class_y_vals = []
         class_y_vals_pred = []
         # The structure of this loop remains unchanged
-        for y_val, class_ids, y_val_pred, class_ids_pred in zip(Y_val, C_val, Y_val_pred, res_val_pred):
+        for y_val, class_ids, y_val_pred, class_ids_pred in zip(
+            Y_val, C_val, Y_val_pred, res_val_pred
+        ):
             new_y_val = np.zeros(y_val.shape, y_val.dtype)
             new_y_val_pred = np.zeros(y_val_pred.shape, y_val_pred.dtype)
             new_y_val[:] = y_val[:]
@@ -172,7 +175,9 @@ for class_id in range(1, 4):
             class_y_vals_pred.append(new_y_val_pred)
 
         stats = [
-            matching_dataset(class_y_vals, class_y_vals_pred, thresh=t, show_progress=False)
+            matching_dataset(
+                class_y_vals, class_y_vals_pred, thresh=t, show_progress=False
+            )
             for t in tqdm(taus)
         ]
         accuracy_at_0_5_IOU.append(stats[4]._asdict()["accuracy"])

@@ -5,6 +5,7 @@ from pathlib import Path
 from glob import glob
 from skimage.io import imsave
 
+
 def initialize_class_net(nclasses=3, device=torch.device("cuda")):
     net = vit_sam.Transformer(rdrop=0.4).to(device)
     # default model

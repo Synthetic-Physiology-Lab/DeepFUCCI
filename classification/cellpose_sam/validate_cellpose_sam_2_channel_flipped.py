@@ -92,7 +92,7 @@ C_val = [
 
 n_classes = 3
 
-X_val = [x[..., 2] for x in tqdm(X)]
+X_val = [np.flip(x[..., 0:2], -1) for x in tqdm(X)]
 Y_val = [fill_label_holes(y) for y in tqdm(Y)]
 
 # Use GPU if available
@@ -206,7 +206,7 @@ for class_id in range(1, 4):
             ax2.set_ylabel("Number #")
             ax2.grid()
             ax2.legend()
-            plt.savefig(f"metrics_cellpose_sam_1ch_class_{class_id}.png")
+            plt.savefig(f"metrics_cellpose_sam_2ch_flipped_class_{class_id}.png")
             plt.close()
 
 print("Pairs:")
