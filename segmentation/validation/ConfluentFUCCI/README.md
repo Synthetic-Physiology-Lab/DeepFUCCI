@@ -35,3 +35,9 @@ The reference diameter was 18 pixels.
 We found that dividing the reference diameter with our pixel size
 yielded a good segmentation, so probably the authors had
 a reference pixel size of 1 micron.
+
+## Validation
+
+We used all of our pre-trained networks because the others provided
+also a third channel, the brightfield channel.
+In the paper, we only report the 2-channel result.
