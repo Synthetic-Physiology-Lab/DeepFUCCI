@@ -13,7 +13,7 @@ from stardist import (
 from stardist.matching import matching_dataset
 from stardist.models import StarDist2D
 
-training_data_dir = "training_data"
+training_data_dir = "training_data_tiled_strict_classified_new"
 # use the same data split as in training
 with open(f"{training_data_dir}/dataset_split.json") as fp:
     dataset_split = json.load(fp)
@@ -67,7 +67,11 @@ Y_val_pred, res_val_pred = tuple(zip(*[model.predict_instances(x)
 
 taus = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
+precision_at_0_5_IOU = []
 accuracy_at_0_5_IOU = []
+tp_at_0_5_IOU = []
+fp_at_0_5_IOU = []
+fn_at_0_5_IOU = []
 class_id_pairs = []
 for class_id in range(1, 4):
     for class_id_pred in range(1, 4):
@@ -93,7 +97,11 @@ for class_id in range(1, 4):
             matching_dataset(class_y_vals, class_y_vals_pred, thresh=t, show_progress=False)
             for t in tqdm(taus)
         ]
+        precision_at_0_5_IOU.append(stats[4]._asdict()["precision"])
         accuracy_at_0_5_IOU.append(stats[4]._asdict()["accuracy"])
+        fp_at_0_5_IOU.append(stats[4]._asdict()["fp"])
+        fn_at_0_5_IOU.append(stats[4]._asdict()["fn"])
+        tp_at_0_5_IOU.append(stats[4]._asdict()["tp"])
 
         if class_id == class_id_pred:
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
@@ -122,7 +130,22 @@ for class_id in range(1, 4):
             plt.savefig(f"metrics_3ch_class_{class_id}.png")
             plt.close()
 
+match_iou_0_5 = matching_dataset(Y, Y_val_pred, thresh=0.5, show_progress=False)
 print("Pairs:")
 print(class_id_pairs)
+print("Precision:")
+print(match_iou_0_5._asdict()["precision"])
+print(precision_at_0_5_IOU)
 print("Accuracy:")
+print(match_iou_0_5._asdict()["accuracy"])
 print(accuracy_at_0_5_IOU)
+print("TP:")
+print(match_iou_0_5._asdict()["tp"])
+print(sum(tp_at_0_5_IOU))
+print(tp_at_0_5_IOU)
+print("FP:")
+print(match_iou_0_5._asdict()["fp"])
+print(fp_at_0_5_IOU)
+print("FN:")
+print(match_iou_0_5._asdict()["fn"])
+print(fn_at_0_5_IOU)
