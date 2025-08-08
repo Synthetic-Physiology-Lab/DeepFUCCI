@@ -54,7 +54,7 @@ C_val = [
     for img_name in dataset_split["validation"]
 ]
 
-n_channel = 2
+n_channel = 1
 n_classes = 3
 
 axis_norm = (0, 1)  # normalize channels independently
@@ -65,8 +65,8 @@ if n_channel > 1:
     )
     sys.stdout.flush()
 
-X_trn = [normalize(x[..., 0:2], 1, 99.8, axis=axis_norm) for x in tqdm(X_trn)]
-X_val = [normalize(x[..., 0:2], 1, 99.8, axis=axis_norm) for x in tqdm(X_val)]
+X_trn = [normalize(x[..., 2], 1, 99.8, axis=axis_norm) for x in tqdm(X_trn)]
+X_val = [normalize(x[..., 2], 1, 99.8, axis=axis_norm) for x in tqdm(X_val)]
 
 assert len(X_trn) == len(Y_trn)
 assert len(X_val) == len(Y_val)

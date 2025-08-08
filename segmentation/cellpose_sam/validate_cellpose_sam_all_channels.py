@@ -2,16 +2,15 @@ import json
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from skimage.io import imread
-from csbdeep.utils import normalize
+from cellpose import models
 
 from stardist import (
     fill_label_holes,
     gputools_available,
 )
 from stardist.matching import matching_dataset
-from stardist.models import StarDist2D
 
-training_data_dir = "training_data"
+training_data_dir = "../training_data_tiled_strict_classified_new"
 # use the same data split as in training
 with open(f"{training_data_dir}/dataset_split.json") as fp:
     dataset_split = json.load(fp)
@@ -25,35 +24,25 @@ Y = [
     for img_name in dataset_split["validation"]
 ]
 
-axis_norm = (0, 1)  # normalize channels independently
-X = [normalize(x, 1, 99.8, axis=axis_norm) for x in tqdm(X)]
 print("number of validation images: %3d" % len(X))
 
 # Use OpenCL-based computations for data generator during training (requires 'gputools')
 use_gpu = gputools_available()
 print("Using GPU: ", use_gpu)
 
-if use_gpu:
-    from csbdeep.utils.tf import limit_gpu_memory
+model = models.CellposeModel(gpu=True, pretrained_model="models/FUCCI_cpsam")
 
-    # adjust as necessary: limit GPU memory to be used by TensorFlow to leave some to OpenCL-based computations
-    limit_gpu_memory(0.1, total_memory=50000)
+Y_val_pred_1d = []
+Y_val_pred_2d = []
+Y_val_pred_3d = []
+for x in tqdm(X):
+    masks, _, _ = model.eval(x[..., 2], batch_size=32)
+    Y_val_pred_1d.append(masks)
+    masks, _, _ = model.eval(x[..., 0:2], batch_size=32)
+    Y_val_pred_2d.append(masks)
+    masks, _, _ = model.eval(x, batch_size=32)
+    Y_val_pred_3d.append(masks)
 
-model_1d = StarDist2D(
-    None, name="stardist", basedir="training_1_channel_stardist/models"
-)
-model_2d = StarDist2D(
-    None, name="stardist", basedir="training_2_channels_stardist/models"
-)
-model_3d = StarDist2D(
-    None, name="stardist", basedir="training_3_channels_stardist/models"
-)
-
-Y_val_pred_1d = [model_1d.predict_instances(x[..., 2])[0] for x in tqdm(X)]
-
-Y_val_pred_2d = [model_2d.predict_instances(x[..., 0:2])[0] for x in tqdm(X)]
-
-Y_val_pred_3d = [model_3d.predict_instances(x)[0] for x in tqdm(X)]
 
 taus = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 stats_1d = [
@@ -107,7 +96,7 @@ for m in (
     plt.legend()
     plt.ylim(0, 1.05)
 
-    plt.savefig(f"validation_{m}.pdf")
+    plt.savefig(f"validation_cellpose_sam_{m}.pdf")
     plt.show()
 
 plt.clf()
@@ -125,7 +114,7 @@ plt.ylabel("Number of labels")
 plt.grid()
 plt.legend()
 
-plt.savefig("validation_label_numbers.pdf")
+plt.savefig("validation_cellpose_sam_label_numbers.pdf")
 plt.show()
 
 print("Stats at 0.5 IoU for 1 CH: ", stats_1d[4])

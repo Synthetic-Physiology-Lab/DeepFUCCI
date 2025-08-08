@@ -1,4 +1,5 @@
 **Please refer to the following paper for more details:**
+
  Ghannoum, S.; Antos, K.; Leoncio Netto, W.; Gomes, C.; Köhn-Luque, A.; Farhan, H. CellMAPtracer: A User-Friendly Tracking Tool for Long-Term Migratory and Proliferating Cells Associated with FUCCI Systems. Cells 2021, 10, 469. https://doi.org/10.3390/cells10020469 
 
 Download the data from: https://zenodo.org/records/4179252
@@ -12,7 +13,7 @@ the Geminin signal is active, the cell is in S and when
 both signals are active, the cell is in G2.
 
 Before segmenting, check the StarDist model directory in the script
-and then run:
+and then run the scripts in `data_preparation`:
  
 ```
 python segment_nuclei.py
@@ -26,4 +27,5 @@ Moreover, we scale the image to adjust it for the trained resolution.**
 # Accuracy check
 
 We manually curated one frame to check the accuracy.
-TODO insert accuracy check
+Find all scripts to check the different algorithms
+in the `validation` folder.

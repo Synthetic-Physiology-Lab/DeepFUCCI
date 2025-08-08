@@ -1,26 +1,30 @@
-# DeepFUCCI
+# DeepFUCCI: Tools to use deep learning for bioimage analysis of FUCCI data
 
-Tools to use deep learning for FUCCI segmentation
+## Data preparation
 
-# Data preparation
-
-For the training, we need annotated FUCCI images.
+For the training, we annotated FUCCI images.
 We used the multiplexed FUCCI sensor as described in
 the [CALIPERS preprint](https://www.biorxiv.org/content/10.1101/2024.12.19.629259).
 The images have three channels: cyan (indicator for G1 phase), magenta (indicator for S/G2/M phase),
 and a cytoplasmic stain that does not stain the nucleus (here tubulin).
 The images are flatfield-corrected if applicable (mostly for 20x and 40x acquisitions).
 
+The training data can be downloaded from Zenodo [TODO insert link].
 The data structure is:
 
 1. `images`: flat-field corrected three channel frames (ending `*.tif`)
 2. `masks`: segmentation masks (ending `*.tif`)
 3. `classes`: JSON files with phase labels, more details below (ending `*.json`)
 
+### Manual annotation
+
+To add your own data or reuse our scripts, you can follow the instructions in the folder
+`DataPreparation`.
+
 ## Segmentation
 
-A summary, related scripts, and validation data can be found in the
-`segmentation` folder.
+The `segmentation` folder contains training scripts and instructions for the validation
+and test of the trained network.
 
 ## Classification
 
@@ -35,25 +39,43 @@ These labels are stored in a JSON file.
 
 You can classify manually or you use [fucciphase](https://github.com/Synthetic-Physiology-Lab/fucciphase.git)
 to obtain an initial classification based on intensities.
-To manually check the annotations, you can run the script `check_classifications.py` (in folder `classification`).
-It opens napari, loads the two FUCCI channels, the labels and the corresponding phase labels.
-Once an image is inspected, hit enter in the terminal and the next image is opened.
-Attention: The labels and image is automatically updated but the phase labels of the previous image
-are not overwritten. Remove or hide them in napari.
-If you find errors, edit the JSON file directly. 
-The label number can be identified in napari.
-Once all files are edited, you can close napari.
+More details can be found in the `DataPreparation` folder.
 
-# Training
+Scripts can be found in the `Classification` folder.
 
-Having prepared the training data, a deep learning network can be trained.
-In the following, the steps for individual architectures that we tested are documented.
+## Tracking
+
+The segmented cells can be tracked, which yields cell-specific FUCCI intensities.
+These can be postprocessed using the [fucciphase](https://github.com/synthetic-Physiology-Lab/fucciphase) package.
+Examples are shown in the `Tracking` folder.
+
+## Tested networks
+
+We (re-)trained the following networks with our network and provide scripts for it:
+* StarDist (see `requirements_stardist.txt` for used versions)
+* Cellpose-SAM (see `requirements_instanseg_cellpose_sam.txt`, can be installed together)
+* InstanSeg (only segmentation)
+* ConfluentFUCCI (only segmentation, `requirements_confluentfucci.txt`, more details on installation in `Segmentation` folder)
+
 **Please feel free to share training recipes for other networks!**
 
-## StarDist
+## Known issues
 
-## InstanSeg
+StarDist does not yet support NumPy v2.
+If an error like
 
-# Tracking
+```
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.2.6 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+```
+
+occurs, downgrade NumPy by running:
+```
+pip install numpy==1.26.4
+```
+
+## Cite us
 
 TODO

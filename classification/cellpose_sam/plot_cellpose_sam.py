@@ -2,7 +2,6 @@ import fastremap
 import matplotlib.pyplot as plt
 import numpy as np
 from cellpose import utils
-from natsort import natsorted
 
 
 cl_colors = [
@@ -15,7 +14,7 @@ cl_colors = [
 def fig5(save_fig=False):
     aps = []
     errors = []
-    dat = np.load("monusac_cellposeSAM.npy", allow_pickle=True).item()
+    dat = np.load("deepfucci_cellposeSAM.npy", allow_pickle=True).item()
     aps.append(np.array(dat["aps"]))
     errors.append(np.array(dat["errors"]))
 
@@ -23,11 +22,7 @@ def fig5(save_fig=False):
     errors = np.array(errors)
     print(np.nanmean(errors, axis=1), np.nanmean(errors, axis=(1, 2)))
     print(np.nanmean(aps, axis=1), np.nanmean(aps, axis=(1, 2)))
-    img_files = dat["img_files"]
 
-    folders = natsorted(np.unique([f.name.split("_")[0] for f in img_files]))
-
-    colors_tab = plt.get_cmap("tab10").colors
     colors = [[0.8, 0.8, 0.3], [0.5, 0.5, 0.5], [0.7, 0.5, 1]]
 
     from scipy.stats import mode
@@ -40,16 +35,12 @@ def fig5(save_fig=False):
     masks_pred = dat["masks_pred"]
     imgs = dat["imgs"]
     masks_true = dat["masks_true"]
-    fig = plt.figure(figsize=(14 * 2.0 / 3, 5), dpi=150)
+    _ = plt.figure(figsize=(14 * 2.0 / 3, 5), dpi=150)
     grid = plt.GridSpec(
         3, 7, hspace=0.0, wspace=0.1, top=0.95, bottom=0.05, left=0.01, right=0.99
     )
-    il = 0
     iexs = [0, 1, 2]
     for i, iex in enumerate(iexs):
-        iap = [i for i, folder in enumerate(folders) if folder in img_files[iex].name][
-            0
-        ]
         ax = plt.subplot(grid[i // 3, i % 3])
         if i == 0:
             pos = ax.get_position().bounds

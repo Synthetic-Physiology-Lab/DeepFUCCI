@@ -1,21 +1,28 @@
+import os
 import json
+import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from skimage.io import imread
 from csbdeep.utils import normalize
+from instanseg import InstanSeg
+from pathlib import Path
 
 from stardist import (
     fill_label_holes,
     gputools_available,
 )
 from stardist.matching import matching_dataset
-from stardist.models import StarDist2D
 
 training_data_dir = "training_data"
 # use the same data split as in training
 with open(f"{training_data_dir}/dataset_split.json") as fp:
     dataset_split = json.load(fp)
 
+
+os.environ["INSTANSEG_BIOIMAGEIO_PATH"] = str(
+    Path.home() / "Documents/github/instanseg/instanseg/bioimageio_models"
+)
 X = [
     imread(f"{training_data_dir}/images/{img_name}")
     for img_name in dataset_split["validation"]
@@ -33,27 +40,50 @@ print("number of validation images: %3d" % len(X))
 use_gpu = gputools_available()
 print("Using GPU: ", use_gpu)
 
-if use_gpu:
-    from csbdeep.utils.tf import limit_gpu_memory
+model_1d = InstanSeg(model_type="fucci_1ch", verbosity=1)
+model_2d = InstanSeg(model_type="fucci_2ch", verbosity=1)
+model_3d = InstanSeg(model_type="fucci_3ch", verbosity=1)
 
-    # adjust as necessary: limit GPU memory to be used by TensorFlow to leave some to OpenCL-based computations
-    limit_gpu_memory(0.1, total_memory=50000)
+pixel_size = 0.335
 
-model_1d = StarDist2D(
-    None, name="stardist", basedir="training_1_channel_stardist/models"
-)
-model_2d = StarDist2D(
-    None, name="stardist", basedir="training_2_channels_stardist/models"
-)
-model_3d = StarDist2D(
-    None, name="stardist", basedir="training_3_channels_stardist/models"
-)
+Y_val_pred_1d = [
+    model_1d.eval_small_image(
+        image=x[..., 2],
+        pixel_size=pixel_size,
+        return_image_tensor=False,
+        target="nuclei",
+    )
+    .squeeze()
+    .numpy()
+    .astype(np.uint16)
+    for x in tqdm(X)
+]
 
-Y_val_pred_1d = [model_1d.predict_instances(x[..., 2])[0] for x in tqdm(X)]
+Y_val_pred_2d = [
+    model_2d.eval_small_image(
+        image=np.moveaxis(x[..., 0:2], -1, 0),
+        pixel_size=pixel_size,
+        return_image_tensor=False,
+        target="nuclei",
+    )
+    .squeeze()
+    .numpy()
+    .astype(np.uint16)
+    for x in tqdm(X)
+]
 
-Y_val_pred_2d = [model_2d.predict_instances(x[..., 0:2])[0] for x in tqdm(X)]
-
-Y_val_pred_3d = [model_3d.predict_instances(x)[0] for x in tqdm(X)]
+Y_val_pred_3d = [
+    model_3d.eval_small_image(
+        image=np.moveaxis(x, -1, 0),
+        pixel_size=pixel_size,
+        return_image_tensor=False,
+        target="nuclei",
+    )
+    .squeeze()
+    .numpy()
+    .astype(np.uint16)
+    for x in tqdm(X)
+]
 
 taus = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 stats_1d = [
@@ -107,7 +137,7 @@ for m in (
     plt.legend()
     plt.ylim(0, 1.05)
 
-    plt.savefig(f"validation_{m}.pdf")
+    plt.savefig(f"validation_custom_instanseg_{m}.pdf")
     plt.show()
 
 plt.clf()
@@ -125,7 +155,7 @@ plt.ylabel("Number of labels")
 plt.grid()
 plt.legend()
 
-plt.savefig("validation_label_numbers.pdf")
+plt.savefig("validation_custom_instanseg_label_numbers.pdf")
 plt.show()
 
 print("Stats at 0.5 IoU for 1 CH: ", stats_1d[4])
