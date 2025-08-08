@@ -16,7 +16,6 @@ from cellpose import vit_sam, models
 
 # --- Start of Cellpose-specific initialization ---
 
-
 def initialize_class_net(nclasses=3, device=torch.device("cuda")):
     """Initializes the classification network for Cellpose."""
     net = vit_sam.Transformer(rdrop=0.4).to(device)
@@ -56,7 +55,6 @@ def initialize_class_net(nclasses=3, device=torch.device("cuda")):
     net.to(device)
     return net
 
-
 # --- End of Cellpose-specific initialization ---
 
 
@@ -65,29 +63,18 @@ training_data_dir = "training_data_tiled_strict_classified_new"
 with open(f"{training_data_dir}/dataset_split.json") as fp:
     dataset_split = json.load(fp)
 
-
 def read_json(path):
     with open(path) as fp:
         data = json.load(fp)
     data_list = []
     for key, value in sorted(data.items()):
         data_list.append((int(key), value))
-
+        
     return dict(data_list)
 
-
-X = [
-    imread(f"{training_data_dir}/images/{img_name}")
-    for img_name in dataset_split["validation"]
-]
-Y = [
-    fill_label_holes(imread(f"{training_data_dir}/masks/{img_name}"))
-    for img_name in dataset_split["validation"]
-]
-C_val = [
-    read_json(f"{training_data_dir}/classes/{img_name.replace('.tif', '.json')}")
-    for img_name in dataset_split["validation"]
-]
+X = [imread(f"{training_data_dir}/images/{img_name}") for img_name in dataset_split["validation"]]
+Y = [fill_label_holes(imread(f"{training_data_dir}/masks/{img_name}")) for img_name in dataset_split["validation"]]
+C_val = [read_json(f"{training_data_dir}/classes/{img_name.replace('.tif', '.json')}") for img_name in dataset_split["validation"]]
 
 
 n_classes = 3
@@ -114,7 +101,6 @@ model.net_ortho = None
 
 # --- Define conversion function and predict with Cellpose ---
 
-
 def class_from_res_cellpose(class_masks, masks):
     """
     Converts Cellpose's class mask and label mask to a StarDist-style
@@ -130,7 +116,6 @@ def class_from_res_cellpose(class_masks, masks):
         cls_dict[int(label)] = int(class_id)
     return cls_dict
 
-
 # Perform prediction with Cellpose for each validation image
 Y_val_pred = []
 res_val_pred = []
@@ -140,9 +125,9 @@ for x in tqdm(X_val):
         batch_size=64,
     )
     classes_pred = styles.squeeze().argmax(axis=-1)
-
+    
     Y_val_pred.append(masks)
-
+    
     # Convert to StarDist dictionary format
     class_dict = class_from_res_cellpose(classes_pred, masks)
     res_val_pred.append(class_dict)
@@ -150,17 +135,18 @@ for x in tqdm(X_val):
 
 taus = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
+precision_at_0_5_IOU = []
 accuracy_at_0_5_IOU = []
+tp_at_0_5_IOU = []
+fp_at_0_5_IOU = []
+fn_at_0_5_IOU = []
 class_id_pairs = []
 for class_id in range(1, 4):
     for class_id_pred in range(1, 4):
         class_id_pairs.append((class_id, class_id_pred))
         class_y_vals = []
         class_y_vals_pred = []
-        # The structure of this loop remains unchanged
-        for y_val, class_ids, y_val_pred, class_ids_pred in zip(
-            Y_val, C_val, Y_val_pred, res_val_pred
-        ):
+        for y_val, class_ids, y_val_pred, class_ids_pred in zip(Y_val, C_val, Y_val_pred, res_val_pred):
             new_y_val = np.zeros(y_val.shape, y_val.dtype)
             new_y_val_pred = np.zeros(y_val_pred.shape, y_val_pred.dtype)
             new_y_val[:] = y_val[:]
@@ -175,12 +161,14 @@ for class_id in range(1, 4):
             class_y_vals_pred.append(new_y_val_pred)
 
         stats = [
-            matching_dataset(
-                class_y_vals, class_y_vals_pred, thresh=t, show_progress=False
-            )
+            matching_dataset(class_y_vals, class_y_vals_pred, thresh=t, show_progress=False)
             for t in tqdm(taus)
         ]
+        precision_at_0_5_IOU.append(stats[4]._asdict()["precision"])
         accuracy_at_0_5_IOU.append(stats[4]._asdict()["accuracy"])
+        fp_at_0_5_IOU.append(stats[4]._asdict()["fp"])
+        fn_at_0_5_IOU.append(stats[4]._asdict()["fn"])
+        tp_at_0_5_IOU.append(stats[4]._asdict()["tp"])
 
         if class_id == class_id_pred:
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
@@ -209,7 +197,22 @@ for class_id in range(1, 4):
             plt.savefig(f"metrics_cellpose_sam_1ch_class_{class_id}.png")
             plt.close()
 
+match_iou_0_5 = matching_dataset(Y, Y_val_pred, thresh=0.5, show_progress=False)
 print("Pairs:")
 print(class_id_pairs)
+print("Precision:")
+print(match_iou_0_5._asdict()["precision"])
+print(precision_at_0_5_IOU)
 print("Accuracy:")
+print(match_iou_0_5._asdict()["accuracy"])
 print(accuracy_at_0_5_IOU)
+print("TP:")
+print(match_iou_0_5._asdict()["tp"])
+print(sum(tp_at_0_5_IOU))
+print(tp_at_0_5_IOU)
+print("FP:")
+print(match_iou_0_5._asdict()["fp"])
+print(fp_at_0_5_IOU)
+print("FN:")
+print(match_iou_0_5._asdict()["fn"])
+print(fn_at_0_5_IOU)

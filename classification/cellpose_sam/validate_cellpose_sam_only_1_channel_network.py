@@ -79,7 +79,7 @@ C_val = [read_json(f"{training_data_dir}/classes/{img_name.replace('.tif', '.jso
 
 n_classes = 3
 
-X_val = [x[..., 0:2] for x in tqdm(X)]
+X_val = [x[..., 2] for x in tqdm(X)]
 Y_val = [fill_label_holes(y) for y in tqdm(Y)]
 
 # Use GPU if available
@@ -91,7 +91,7 @@ model = models.CellposeModel(gpu=use_gpu, pretrained_model="cpsam")
 net = initialize_class_net(nclasses=n_classes, device=device)
 # Make sure to provide the correct path to your trained Cellpose model weights
 net.load_model(
-    "models/FUCCI_batch_size_8",
+    "models/FUCCI_tubulin_batch_size_8",
     device=device,
     strict=False,
 )
@@ -194,7 +194,7 @@ for class_id in range(1, 4):
             ax2.set_ylabel("Number #")
             ax2.grid()
             ax2.legend()
-            plt.savefig(f"metrics_cellpose_sam_1ch_class_{class_id}.png")
+            plt.savefig(f"metrics_cellpose_sam_only_1ch_class_{class_id}.png")
             plt.close()
 
 match_iou_0_5 = matching_dataset(Y, Y_val_pred, thresh=0.5, show_progress=False)
