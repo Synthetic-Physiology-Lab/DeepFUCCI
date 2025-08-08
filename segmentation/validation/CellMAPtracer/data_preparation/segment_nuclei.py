@@ -7,6 +7,7 @@ from stardist.models import StarDist2D
 from tqdm import tqdm
 import csbdeep
 from basicpy import BaSiC
+from pathlib import Path
 
 with open("metadata.yml", "r") as metadatafile:
     metadata = yaml.load(metadatafile, yaml.BaseLoader)
@@ -33,8 +34,8 @@ labels_2d = np.zeros(shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dim
 labels_3d = np.zeros(shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dims.X), dtype=np.uint16)
 
 model_1d = StarDist2D.from_pretrained('2D_versatile_fluo')
-model_2d = StarDist2D(None, name='stardist_2_channel_grid', basedir='models')
-model_3d = StarDist2D(None, name='stardist_3_channel_grid', basedir='models')
+model_2d = StarDist2D(None, name='stardist_2_channel_latest', basedir=Path.home() / 'models')
+model_3d = StarDist2D(None, name='stardist_3_channel_latest', basedir=Path.home() / 'models')
 if flatfield_correction:
     basic_tubulin = BaSiC.load_model("basic_model_tubulin")
     basic_cyan = BaSiC.load_model("basic_model_cyan")
