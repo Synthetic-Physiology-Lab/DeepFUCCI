@@ -14,6 +14,13 @@ Make sure that Tensorflow uses the GPU.
 
 ## ConfluentFUCCI
 
+Download the pre-trained network and follow the instructions
+in the respective folder.
+
 ## InstanSeg
 
-TODO
+Training and inference are explained in the respective folder.
+
+## Cellpose-SAM
+
+Training and inference are explained in the respective folder.
