@@ -59,6 +59,30 @@ We (re-)trained the following networks with our network and provide scripts for 
 
 **Please feel free to share training recipes for other networks!**
 
+## Windows installation
+
+TensorFlow is required for StarDist and has dropped GPU support on Windows.
+Use the following recipe to run StarDist with GPU support on Windows:
+
+1. Install Git Bash
+2. Install micromamba as described here: https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html#umamba-install
+3. Create an environment
+   ```
+   micromamba create -n stardist_env
+   micromamba activate stardist_env
+   ```
+5. Make sure that the environment is active and run
+   ```
+   micromamba install python=3.10
+   micromamba install -c conda-forge cudatoolkit=11.2 cudnn=8.1.0
+   python -m pip install numpy==1.26.4 "tensorflow<2.11"
+   python -c "import tensorflow as tf; print(tf.config.list_physical_devices('GPU'))"
+   ```
+   **The last command should print something like:**
+   ```
+   [PhysicalDevice(name='/physical_device:GPU:0', device_type='GPU')]
+   ```
+   Then proceed to install StarDist and the other requirements (see `requirements_stardist.txt`).
 ## Known issues
 
 StarDist does not yet support NumPy v2.
