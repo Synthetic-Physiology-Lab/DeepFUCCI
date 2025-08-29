@@ -78,6 +78,7 @@ other and then correct the segmentation.
 Single frames are then exported in training-ready format
 through
 `extract_frames.py`. 
+**Attention: Make sure that the images are correctly scaled in this script! Instructions are provided in the script.**
 Now, there should be a folder `for_training`.
 
 ## Classify data
