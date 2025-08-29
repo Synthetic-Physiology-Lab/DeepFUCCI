@@ -1,5 +1,18 @@
 # DeepFUCCI: Tools to use deep learning for bioimage analysis of FUCCI data
 
+## Quickstart
+
+To use the pretrained models, make sure that the right libraries are installed
+(StarDist, InstanSeg, Cellpose-SAM, e.g.) and download the weights from
+[Zenodo](https://zenodo.org/records/16574478?preview=1&token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6ImZjNWE2ZGVjLWM1YzYtNGE1OS1iMjU1LWI0ZTMyNjY4MzViZCIsImRhdGEiOnt9LCJyYW5kb20iOiI0NWFhZmIxN2JmZGZkYTM0OWY0MmYxYWIyM2M2N2Q1OCJ9.LKoGQ880eIhgRcvUWQu-RfIu9aExpbJ2J43xk09THstPnmMduna9nqfl-kAM0PFjYrcfkAYhXIazBU7mSitRCg)
+
+Take the files `segment_and_classify_nuclei.py` and `segment_nuclei.py` from the `DataPreparation` folder as examples
+how to use the StarDist networks.
+They require the image file to have the correct pixel size. If the segmentation result is not satisfying, please check whether
+the image metadata is correct.
+
+Find visualization examples using Napari in the `Utilities` folder.
+
 ## Data preparation
 
 For the training, we annotated FUCCI images.
