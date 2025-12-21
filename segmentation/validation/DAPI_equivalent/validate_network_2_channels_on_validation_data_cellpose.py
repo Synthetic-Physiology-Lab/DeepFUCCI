@@ -12,7 +12,6 @@ from cellpose import models
 from stardist import (
     fill_label_holes,
     random_label_cmap,
-    gputools_available,
 )
 from stardist.matching import matching_dataset
 

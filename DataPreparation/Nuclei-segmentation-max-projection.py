@@ -1,3 +1,4 @@
+import os
 from basicpy import BaSiC
 from aicsimageio import AICSImage
 import pyclesperanto_prototype as cle

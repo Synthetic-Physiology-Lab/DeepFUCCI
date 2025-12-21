@@ -10,7 +10,6 @@ from glob import glob
 
 
 from stardist import (
-    fill_label_holes,
     random_label_cmap,
 )
 from stardist.matching import matching_dataset

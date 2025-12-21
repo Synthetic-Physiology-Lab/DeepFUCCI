@@ -3,14 +3,12 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from skimage.io import imread, imsave
-from csbdeep.utils import normalize
+from skimage.io import imsave
 from bioio import BioImage
 import bioio_ome_tiff
 import bioio_tifffile
 from cellpose import models
 import pyclesperanto_prototype as cle
-from skimage.measure import label as label_skimage
 
 from stardist import (
     fill_label_holes,

@@ -1,15 +1,12 @@
 from __future__ import print_function, unicode_literals, absolute_import, division
-from glob import glob
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from skimage.measure import label as skimage_label
 from skimage.io import imread
-from csbdeep.utils import Path, normalize
+from csbdeep.utils import normalize
 
 from stardist import (
-    fill_label_holes,
     random_label_cmap,
     gputools_available,
 )
