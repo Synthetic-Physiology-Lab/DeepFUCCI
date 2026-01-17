@@ -1,4 +1,5 @@
 # Taken from InstanSeg github repository and modified
+import json
 import os
 import torch
 import numpy as np
@@ -42,13 +43,23 @@ def load_custom_dataset(
 
     if not os.path.exists(data_path):
         raise FileNotFoundError(data_path)
-    items_1ch = []
-    items_2ch = []
-    items_3ch = []
+
+    # Load dataset split from JSON (same as StarDist training scripts)
+    dataset_split_path = os.path.join(data_path, "dataset_split.json")
+    if not os.path.exists(dataset_split_path):
+        raise FileNotFoundError(
+            f"dataset_split.json not found at {dataset_split_path}. "
+            "Please create this file with 'training', 'validation', and optionally 'test' keys."
+        )
+
+    with open(dataset_split_path) as fp:
+        dataset_split = json.load(fp)
 
     images_path = os.path.join(data_path, "images")
     masks_path = os.path.join(data_path, "masks")
-    for file in sorted(os.listdir(images_path)):
+
+    def load_item(file):
+        """Load a single image/mask pair and create items for all channel configurations."""
         item_1ch = {}
         item_2ch = {}
         item_3ch = {}
@@ -56,14 +67,12 @@ def load_custom_dataset(
         mask_path = os.path.join(masks_path, Path(file).name)
         image = io.imread(os.path.join(images_path, file))
         masks = io.imread(mask_path)
-        # commented because messed up labels?
-        # masks, _ = fastremap.renumber(masks, in_place=True)
-        # masks = fastremap.refit(masks)
         assert masks.squeeze().ndim == 2, (
             r"The mask should be a 2D array, found {}".format(masks.shape)
         )
 
-        # The masks should be a numpy array (or pytorch tensor) with shape (H, W). The values should be integers starting from 0. Each integer represents a different object.
+        # The masks should be a numpy array (or pytorch tensor) with shape (H, W).
+        # The values should be integers starting from 0. Each integer represents a different object.
         item_1ch["nucleus_masks"] = masks
         item_2ch["nucleus_masks"] = masks
         item_3ch["nucleus_masks"] = masks
@@ -81,39 +90,41 @@ def load_custom_dataset(
         item_3ch["licence"] = "CC BY 4.0"
 
         # Pixel size should be in microns per pixel (usually it is in the range 0.2 to 1).
-        # If the segmentation task is not for cells, or the pixel size is not known, you can comment this line out.
-        # However, we strongly recommend you make sure the labels are of reasonable size, and fairly uniform across the dataset.
-        # A good label area is around 300 pixels. See load_Cellpose in data_download.py for an example of how to load a dataset without pixel size.
         item_1ch["pixel_size"] = 0.3
         item_2ch["pixel_size"] = 0.3
         item_3ch["pixel_size"] = 0.3
         item_1ch["image_modality"] = "Fluorescence"
         item_2ch["image_modality"] = "Fluorescence"
         item_3ch["image_modality"] = "Fluorescence"
-        item_1ch["file_name"] = file  # optional
-        item_2ch["file_name"] = file  # optional
-        item_3ch["file_name"] = file  # optional
-        items_1ch.append(item_1ch)
-        items_2ch.append(item_2ch)
-        items_3ch.append(item_3ch)
+        item_1ch["file_name"] = file
+        item_2ch["file_name"] = file
+        item_3ch["file_name"] = file
 
-    assert len(items_1ch) > 0, "No items found in the dataset folder."
+        return item_1ch, item_2ch, item_3ch
 
-    rng = np.random.RandomState(42)
-    ind = rng.permutation(len(items_1ch))
-    n_train = max(1, int(round(0.8 * len(ind))))
-    n_val = max(1, int(round(0.9 * len(ind))))
-    Segmentation_Dataset_1ch["Train"] += list(map(lambda x: items_1ch[x], ind[:n_train]))
-    Segmentation_Dataset_2ch["Train"] += list(map(lambda x: items_2ch[x], ind[:n_train]))
-    Segmentation_Dataset_3ch["Train"] += list(map(lambda x: items_3ch[x], ind[:n_train]))
+    # Load training data
+    for file in dataset_split["training"]:
+        item_1ch, item_2ch, item_3ch = load_item(file)
+        Segmentation_Dataset_1ch["Train"].append(item_1ch)
+        Segmentation_Dataset_2ch["Train"].append(item_2ch)
+        Segmentation_Dataset_3ch["Train"].append(item_3ch)
 
-    Segmentation_Dataset_1ch["Validation"] += list(map(lambda x: items_1ch[x], ind[n_train:n_val]))
-    Segmentation_Dataset_2ch["Validation"] += list(map(lambda x: items_2ch[x], ind[n_train:n_val]))
-    Segmentation_Dataset_3ch["Validation"] += list(map(lambda x: items_3ch[x], ind[n_train:n_val]))
+    # Load validation data
+    for file in dataset_split["validation"]:
+        item_1ch, item_2ch, item_3ch = load_item(file)
+        Segmentation_Dataset_1ch["Validation"].append(item_1ch)
+        Segmentation_Dataset_2ch["Validation"].append(item_2ch)
+        Segmentation_Dataset_3ch["Validation"].append(item_3ch)
 
-    Segmentation_Dataset_1ch["Test"] += list(map(lambda x: items_1ch[x], ind[n_val:]))
-    Segmentation_Dataset_2ch["Test"] += list(map(lambda x: items_2ch[x], ind[n_val:]))
-    Segmentation_Dataset_3ch["Test"] += list(map(lambda x: items_3ch[x], ind[n_val:]))
+    # Load test data if present
+    if "test" in dataset_split:
+        for file in dataset_split["test"]:
+            item_1ch, item_2ch, item_3ch = load_item(file)
+            Segmentation_Dataset_1ch["Test"].append(item_1ch)
+            Segmentation_Dataset_2ch["Test"].append(item_2ch)
+            Segmentation_Dataset_3ch["Test"].append(item_3ch)
+
+    assert len(Segmentation_Dataset_1ch["Train"]) > 0, "No training items found."
 
     return Segmentation_Dataset_1ch, Segmentation_Dataset_2ch, Segmentation_Dataset_3ch
 
