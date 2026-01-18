@@ -6,7 +6,7 @@ import os
 import json
 import pyclesperanto_prototype as cle
 
-data_dir = "training_data_relabeled_classified"  
+data_dir = "training_data_relabeled_classified"
 new_data_dir = "training_data_tiled_strict_classified"
 
 patch_size = 256

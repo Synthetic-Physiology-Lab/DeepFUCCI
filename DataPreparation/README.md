@@ -1,129 +1,212 @@
-# Data preparation
+# Data Preparation
 
-We manage the scripts through a `metadata.yml`
-file where you need to enter the filename, the channel numbers,
-and the expected nuclear diameter (in microns).
+This folder contains scripts to prepare training data from raw FUCCI microscopy images.
 
-## Flat-field correction
+## Overview
 
-If the image has a notable flatfield,
-correct it using the `Basic-Flatfield-Correction.py`
-script.
-Please note that this script produces a BaSiC model
-for each channel.
-The later scripts will use the models so **make sure that
-the models in the folder belong to the data that you process!**
+The data preparation pipeline converts raw FUCCI videos into training-ready datasets:
 
-## Using the DAPI-eq approach
+```
+Raw Video → Flatfield Correction → Segmentation → Manual Curation → Tiling → Split
+```
 
-In the script `Nuclei-segmentation-max-projection.py`,
-a max-projection of the two FUCCI channels is segmented.
-The image is denoised by a Gaussian blur and the background is
+## Output Folder Structure
+
+Each step produces output in a specific folder:
+
+| Step | Script | Output Folder |
+|------|--------|---------------|
+| 1. Extract frames | `extract_frames.py` | `for_training/` |
+| 2. Classify | `relabel_and_classify_test_data.py` | `for_training_relabeled_classified/` |
+| 3. Aggregate | (manual copy) | `training_data_relabeled_classified/` |
+| 4. Tile | `tile_training_data.py` | `training_data_tiled_strict_classified/` |
+| 5. Split | `split_training_set.py` | `dataset_split.json` |
+
+The final `training_data_tiled_strict_classified/` folder (or a renamed/symlinked version)
+is what the training scripts expect as `training_data/`.
+
+## Prerequisites
+
+We manage the scripts through a `metadata.yml` file where you need to enter:
+- The filename
+- The channel numbers
+- The expected nuclear diameter (in microns)
+
+## Step-by-Step Instructions
+
+### Step 1: Flat-Field Correction (Optional)
+
+If the image has notable flatfield artifacts (common for 20x and 40x acquisitions),
+correct it using:
+
+```bash
+python Basic-Flatfield-Correction.py
+```
+
+This script produces a BaSiC model for each channel.
+
+**Important**: The later scripts will use these models, so make sure that
+the models in the folder belong to the data that you process!
+
+### Step 2: Initial Segmentation
+
+You have two options for initial segmentation:
+
+#### Option A: DAPI-equivalent approach
+
+Use `Nuclei-segmentation-max-projection.py` to segment a max-projection of the
+two FUCCI channels. The image is denoised by Gaussian blur and background is
 subtracted using a top-hat filter.
-For that, the expected diameter of the nucleus
-needs to be added to the metadata YAML file. 
 
-## Using the pre-trained network
+**Requires**: Expected diameter of the nucleus in the metadata YAML file.
 
-Using the script `segment-nuclei.py` prepares three files:
-`stardist_labels_{1,2,3}_channel.tif`
-They are containing the masks predicted by the three
-pre-trained StarDist networks.
-**Note: You need to enter the model name and reference
-pixel size. The pixel size here is correct for the 
-pretrained network.**
+#### Option B: Pre-trained network (Recommended)
 
-If you want to use the classifier network and
-save also the predicted classes, use
-`segment_and_classify_nuclei.py`.
-It will save the masks in 
-`stardist_labels_{1,2,3}_channel_classifier.tif`
-and the related classes (the key is the mask label
-and the value the related class) in
-`classes_{1,2,3}_channel.tif`.
+Use `segment_nuclei.py` to segment using the pretrained StarDist networks:
 
-## Inspect and curate the labels
-
-I opened the labels in Napari by using the `view_in_napari.py`
-script. In the example here, I used the StarDist labels.
-For other labels, the script has to be adapted.
-Then, I duplicated the label layer that seemed
-to have the best segmentation and manually curated
-this layer.
-The manually curated layer is then exported from Napari
-to the `dapieq_labels_manual.tif` file. 
-
-The annotation is done on entire videos because the
-FUCCI sensor goes dark after division. By switching
-between frames, it becomes easier to judge if there is a
-nucleus, debris, or an artifact (e.g., from bleedthrough).
-However, it makes sense to only annotate single frames
-because most of the nuclei look similar.
-
-To facilitate the labeling, there is an option to tile
-a single frame in `view_tiled_frame_in_napari.py`.
-For example, the tiling will work for 9 tiles like:
-
-```
-1 | 4 | 7
-2 | 5 | 8
-3 | 6 | 9
+```bash
+python segment_nuclei.py
 ```
 
-Thus, you can open the video and the tiled frame next to each
-other and then correct the segmentation.
+This produces three files: `stardist_labels_{1,2,3}_channel.tif`
 
-## Generate training data
+**Note**: You need to enter the model name and reference pixel size in the script.
+The default pixel size (0.3357 μm/pixel) is correct for the pretrained network.
 
-Single frames are then exported in training-ready format
-through
-`extract_frames.py`. 
-**Attention: Make sure that the images are correctly scaled in this script! Instructions are provided in the script.**
-Now, there should be a folder `for_training`.
+To also predict cell cycle phases, use:
 
-## Classify data
-
-Make sure that the `fucciphase` package is installed
-and run
-
+```bash
+python segment_and_classify_nuclei.py
 ```
+
+This saves masks in `stardist_labels_{1,2,3}_channel_classifier.tif` and
+classes in `classes_{1,2,3}_channel.json`.
+
+### Step 3: Manual Curation in Napari
+
+Open the labels in Napari:
+
+```bash
+python view_in_napari.py
+```
+
+Then:
+1. Duplicate the label layer with the best segmentation
+2. Manually curate this layer (fix errors, remove artifacts)
+3. Export the curated layer to `dapieq_labels_manual.tif`
+
+**Tips**:
+- Annotate entire videos because FUCCI sensors go dark after division
+- Switch between frames to distinguish nuclei from debris/artifacts
+- For large images, use `view_tiled_frame_in_napari.py` to work on tiles
+
+### Step 4: Extract Training Frames
+
+Export single frames in training-ready format:
+
+```bash
+python extract_frames.py
+```
+
+**Attention**: Make sure images are correctly scaled! Instructions are in the script.
+
+**Output**: `for_training/` folder with `images/` and `masks/` subfolders.
+
+### Step 5: Classify Nuclei
+
+Install [fucciphase](https://github.com/Synthetic-Physiology-Lab/fucciphase) and run:
+
+```bash
 python relabel_and_classify_test_data.py
 ```
 
-This creates a folder `for_training_relabeled_classified`.
-Copy the `check_classifications.py` script to this folder
-and run it.
-It opens Napari and shows the image, segmentation masks, and proposal
-for the classification.
-Check if all labels correct. If not, open the json-file
-that is shown in the current view (it can be found in
-`for_training_relabeled_classified/classes`) and
-correct the entry for the segmentation masks (for that,
-you can select the label in the `label` layer of Napari,
-which will give you the label ID).
-The name of the file that is currently opened is printed
-in the command line.
-When you are done with the file, hit enter in the command line
- and the next file will open.
-**Note: A new points layer is opened, delete the old one!**
-After the last file, nothing will happen and can you close napari.
+**Output**: `for_training_relabeled_classified/` with `images/`, `masks/`, and `classes/`.
 
-Copy the files into the general training data folder.
-Here, it is called `training_data_relabeled_classified`.
-It holds all annotated data that is not yet cropped or tiled.
-In a next step, the data is tiled (here to 256x256 pixels).
-The number of nuclei per crop are counted. If there are less
-than 4 nuclei (nuclei touching the border are not counted),
-the crop is discarded.
-The script for tiling and filtering is called:
+### Step 6: Check Classifications
 
+Copy `check_classifications.py` to the output folder and run it:
+
+```bash
+cp check_classifications.py for_training_relabeled_classified/
+cd for_training_relabeled_classified
+python check_classifications.py
 ```
+
+This opens Napari showing image, masks, and classification proposals.
+
+**To correct labels**:
+1. Find the label ID by selecting it in Napari's label layer
+2. Open the corresponding JSON file in `classes/`
+3. Correct the entry for that label
+4. Press Enter in the command line to proceed to the next file
+
+**Note**: Delete old points layers as new ones are created for each file.
+
+### Step 7: Aggregate Data
+
+Copy verified files to the aggregation folder:
+
+```bash
+cp -r for_training_relabeled_classified/* training_data_relabeled_classified/
+```
+
+This folder holds all annotated data from multiple sessions before tiling.
+
+### Step 8: Tile Training Data
+
+Tile images to 256x256 pixels and filter out tiles with too few nuclei:
+
+```bash
 python tile_training_data.py
 ```
 
-## Split dataset
+**Output**: `training_data_tiled_strict_classified/` with tiled `images/`, `masks/`, and `classes/`.
 
-We split the dataset randomly into training and validation data.
-For this, execute `split_training_set.py`.
-It will store a JSON file with the files belonging to the respective
-group.
+Tiles with fewer than 4 nuclei (not touching borders) are discarded.
+
+### Step 9: Split Dataset
+
+Split the dataset into training and validation sets:
+
+```bash
+python split_training_set.py
+```
+
+**Output**: `dataset_split.json` with lists of filenames for each split.
+
+## Final Training Data Structure
+
+After all steps, your training data should look like:
+
+```
+training_data/                      # Symlink or rename from training_data_tiled_strict_classified
+├── images/
+│   ├── image_001_1.tif            # 256x256, 3-channel
+│   ├── image_001_2.tif
+│   └── ...
+├── masks/
+│   ├── image_001_1.tif            # 256x256, uint16 labels
+│   ├── image_001_2.tif
+│   └── ...
+├── classes/
+│   ├── image_001_1.json           # {"1": 2, "2": 1, "3": 3, ...}
+│   ├── image_001_2.json
+│   └── ...
+└── dataset_split.json             # {"training": [...], "validation": [...]}
+```
+
+## Connecting to Training Scripts
+
+Training scripts expect data in `../training_data/` relative to their location.
+
+**Option 1**: Rename the tiled folder
+```bash
+mv training_data_tiled_strict_classified ../training_data
+```
+
+**Option 2**: Create a symlink
+```bash
+ln -s $(pwd)/training_data_tiled_strict_classified ../training_data
+```
+
+See the main README for the complete data flow diagram.

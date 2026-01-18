@@ -1,21 +1,41 @@
+"""
+Train Cellpose-SAM for FUCCI nuclear segmentation.
+
+Before running this script, prepare the data using:
+    python prepare_cellpose_SAM_data.py
+
+This will create the training_data_for_cellpose/ directory with the
+properly formatted data.
+
+The trained model will be saved to ~/.cellpose/models/FUCCI_cpsam
+
+Usage:
+    python train_Cellpose-SAM.py
+"""
+
 from cellpose import models, core, io
 from pathlib import Path
 from cellpose import train
 
 io.logger_setup()  # run this to get printing of progress
 
-# Check if colab notebook instance has GPU access
+# Check GPU access
 if core.use_gpu() is False:
-    raise ImportError("No GPU access, change your runtime")
+    raise ImportError(
+        "No GPU access. Ensure CUDA is properly configured.\n"
+        "On Windows, you may need to install PyTorch with CUDA support."
+    )
 
 model = models.CellposeModel(gpu=True)
 
 
-# Input directory with your images (if you have them, otherwise use sample images):
-
-train_dir = "../training_data_for_cellpose"
+# Input directory (output of prepare_cellpose_SAM_data.py)
+train_dir = "training_data_for_cellpose"
 if not Path(train_dir).exists():
-    raise FileNotFoundError("directory does not exist")
+    raise FileNotFoundError(
+        f"Training data directory not found: {train_dir}\n"
+        "Please run 'python prepare_cellpose_SAM_data.py' first to prepare the data."
+    )
 
 test_dir = None  # optionally you can specify a directory with test files
 
