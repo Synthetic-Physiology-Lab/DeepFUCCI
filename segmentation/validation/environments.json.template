@@ -1,0 +1,9 @@
+{
+    "_comment": "Template for environment configuration. Copy to environments.json and update paths.",
+    "_usage": "python update_latex_table.py --env-config environments.json",
+
+    "stardist": "C:/Users/pc/micromamba/envs/stardist_env/python.exe",
+    "instanseg": "C:/Users/pc/micromamba/envs/instanseg_env/python.exe",
+    "cellpose": "C:/Users/pc/micromamba/envs/cellpose_env/python.exe",
+    "confluentfucci": "C:/Users/pc/micromamba/envs/confluentfucci_env/python.exe"
+}
