@@ -19,7 +19,8 @@ matplotlib.rcParams["image.interpolation"] = "none"
 np.random.seed(42)
 lbl_cmap = random_label_cmap()
 
-test_data_dir = "../test_confluent_fucci_data"
+DATA_DIR = "../../../data"
+test_data_dir = f"{DATA_DIR}/test_confluentfucci"
 X = sorted(glob(f"{test_data_dir}/images/*.tif"))
 Y = sorted(glob(f"{test_data_dir}/masks/*.tif"))
 assert all(Path(x).name == Path(y).name for x, y in zip(X, Y))

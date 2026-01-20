@@ -11,8 +11,10 @@ from stardist import (
 )
 from stardist.matching import matching_dataset
 
-X = sorted(glob("../test_confluent_fucci_data/images/*.tif"))
-Y = sorted(glob("../test_confluent_fucci_data/masks/*.tif"))
+DATA_DIR = "../../../data"
+test_data_dir = f"{DATA_DIR}/test_confluentfucci"
+X = sorted(glob(f"{test_data_dir}/images/*.tif"))
+Y = sorted(glob(f"{test_data_dir}/masks/*.tif"))
 assert all(Path(x).name == Path(y).name for x, y in zip(X, Y))
 
 X = list(map(imread, X))

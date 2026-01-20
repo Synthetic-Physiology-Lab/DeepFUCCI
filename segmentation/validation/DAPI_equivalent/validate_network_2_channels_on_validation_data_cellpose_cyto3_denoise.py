@@ -18,7 +18,8 @@ matplotlib.rcParams["image.interpolation"] = "none"
 np.random.seed(42)
 lbl_cmap = random_label_cmap()
 
-training_data_dir = "../training_data_tiled_strict_classified_new"
+DATA_DIR = "../../data"
+training_data_dir = f"{DATA_DIR}/training_data_tiled_strict_classified"
 # use the same data split as in training
 with open(f"{training_data_dir}/dataset_split.json") as fp:
     dataset_split = json.load(fp)
