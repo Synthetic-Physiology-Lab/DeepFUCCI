@@ -12,7 +12,7 @@ from stardist import (
 from stardist.matching import matching_dataset
 from stardist.models import StarDist2D
 
-DATA_DIR = "../../data"
+DATA_DIR = "../../../data"
 training_data_dir = f"{DATA_DIR}/training_data_tiled_strict_classified"
 # use the same data split as in training
 with open(f"{training_data_dir}/dataset_split.json") as fp:

@@ -1,3 +1,4 @@
+from pathlib import Path
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -16,28 +17,42 @@ from stardist.matching import matching_dataset
 matplotlib.rcParams["image.interpolation"] = "none"
 np.random.seed(42)
 lbl_cmap = random_label_cmap()
-X_val = [np.moveaxis(imread("image_cyan_magenta_last_frame.tif"), 0, -1)]
+data_file = "image_cyan_magenta_last_frame.tif"
+if not Path(data_file).exists():
+    data_file = Path("../../../../data/test_cellmaptracer") / data_file
+    if not Path(data_file).exists():
+        raise FileNotFoundError("Data file not there")
+
+
+X_val = [np.moveaxis(imread(data_file), 0, -1)]
 Y_val = [fill_label_holes(imread("gt_last_frame.tif"))]
 
-model = models.Cellpose(model_type='cyto3')
+model = models.Cellpose(model_type="cyto3")
 nucleus_radius_pixel = 10 / 0.3  # 10 microns divided by 0.3 microns per pixel
+
 
 def predict_instances(x):
     ch1 = x[..., 0]
     ch2 = x[..., 1]
 
-    ch1_top = cle.top_hat_sphere(ch1, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel)
+    ch1_top = cle.top_hat_sphere(
+        ch1, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel
+    )
     # blur
     ch1_blur = cle.gaussian_blur(ch1_top, sigma_x=2.0, sigma_y=2.0)
     normal_ch1 = normalize(ch1_blur.get())
 
-    ch2_top = cle.top_hat_sphere(ch2, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel)
+    ch2_top = cle.top_hat_sphere(
+        ch2, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel
+    )
     ch2_blur = cle.gaussian_blur(ch2_top, sigma_x=2.0, sigma_y=2.0)
     normal_ch2 = normalize(ch2_blur.get())
 
     max_projected = np.maximum(normal_ch1, normal_ch2)
-    channels = [[0,0]]
-    dapieq_labels, flows, styles, diams = model.eval(max_projected, diameter=2.0 * nucleus_radius_pixel, channels=channels)
+    channels = [[0, 0]]
+    dapieq_labels, flows, styles, diams = model.eval(
+        max_projected, diameter=2.0 * nucleus_radius_pixel, channels=channels
+    )
     return dapieq_labels
 
 

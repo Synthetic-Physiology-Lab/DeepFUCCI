@@ -12,7 +12,7 @@ with open("metadata.yml", "r") as metadatafile:
 channels = metadata["channels"]
 
 filename = metadata["filename"]
-#filename = f"{filename}_denoised_butterworth.tif"
+# filename = f"{filename}_denoised_butterworth.tif"
 
 viewer = napari.Viewer()
 
@@ -36,7 +36,9 @@ if flatfield_correction:
     img_tub = basic_tubulin.transform(img_tub, timelapse=True)
     img_cyan = basic_cyan.transform(img_cyan, timelapse=True)
     img_magenta = basic_magenta.transform(img_magenta, timelapse=True)
-tub_layer=viewer.add_image(img_tub, colormap="green", blending="additive", name="PCNA")
+tub_layer = viewer.add_image(
+    img_tub, colormap="green", blending="additive", name="PCNA"
+)
 viewer.add_image(img_cyan, colormap="cyan", blending="additive", name="PIP")
 viewer.add_image(img_magenta, colormap="magenta", blending="additive", name="Geminin")
 

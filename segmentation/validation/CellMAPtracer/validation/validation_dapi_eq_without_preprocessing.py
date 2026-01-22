@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from skimage.io import imread
 from csbdeep.utils import normalize
+from pathlib import Path
 
 from stardist import (
     fill_label_holes,
@@ -18,7 +19,13 @@ matplotlib.rcParams["image.interpolation"] = "none"
 np.random.seed(42)
 lbl_cmap = random_label_cmap()
 
-X_val = [np.moveaxis(imread("image_cyan_magenta_last_frame.tif"), 0, -1)]
+data_file = "image_cyan_magenta_last_frame.tif"
+if not Path(data_file).exists():
+    data_file = Path("../../../../data/test_cellmaptracer") / data_file
+    if not Path(data_file).exists():
+        raise FileNotFoundError("Data file not there")
+
+X_val = [np.moveaxis(imread(data_file), 0, -1)]
 Y_val = [fill_label_holes(imread("gt_last_frame.tif"))]
 
 # Use OpenCL-based computations for data generator during training (requires 'gputools')
@@ -27,10 +34,12 @@ print("Using GPU: ", use_gpu)
 
 if use_gpu:
     from csbdeep.utils.tf import limit_gpu_memory
+
     limit_gpu_memory(0.1, total_memory=50000)
 
-model = StarDist2D.from_pretrained('2D_versatile_fluo')
+model = StarDist2D.from_pretrained("2D_versatile_fluo")
 nucleus_radius_pixel = 10 / 0.3  # 10 microns divided by 0.3 microns per pixel
+
 
 def predict_instances(x):
     ch1 = normalize(x[..., 0])

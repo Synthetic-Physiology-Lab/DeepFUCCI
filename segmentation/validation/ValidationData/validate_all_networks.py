@@ -1,4 +1,6 @@
 import json
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from skimage.io import imread
@@ -11,7 +13,7 @@ from stardist import (
 from stardist.matching import matching_dataset
 from stardist.models import StarDist2D
 
-DATA_DIR = "../../data"
+DATA_DIR = "../../../data"
 training_data_dir = f"{DATA_DIR}/training_data_tiled_strict_classified"
 # use the same data split as in training
 with open(f"{training_data_dir}/dataset_split.json") as fp:
@@ -41,13 +43,13 @@ if use_gpu:
     limit_gpu_memory(0.1, total_memory=50000)
 
 model_1d = StarDist2D(
-    None, name="stardist", basedir="training_1_channel_stardist/models"
+    None, name="stardist_1_channel_latest", basedir=Path.home() / "models"
 )
 model_2d = StarDist2D(
-    None, name="stardist", basedir="training_2_channels_stardist/models"
+    None, name="stardist_2_channel_latest", basedir=Path.home() / "models"
 )
 model_3d = StarDist2D(
-    None, name="stardist", basedir="training_3_channels_stardist/models"
+    None, name="stardist_3_channel_latest", basedir=Path.home() / "models"
 )
 
 Y_val_pred_1d = [model_1d.predict_instances(x[..., 2])[0] for x in tqdm(X)]

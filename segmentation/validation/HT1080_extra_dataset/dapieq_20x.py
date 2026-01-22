@@ -20,7 +20,7 @@ matplotlib.rcParams["image.interpolation"] = "none"
 np.random.seed(42)
 lbl_cmap = random_label_cmap()
 
-DATA_DIR = "../../data"
+DATA_DIR = "../../../data"
 test_data_dir = f"{DATA_DIR}/data_set_HT1080_20x"
 X = sorted(glob(f"{test_data_dir}/images/*.tif"))
 Y = sorted(glob(f"{test_data_dir}/masks/*.tif"))
@@ -47,19 +47,24 @@ if use_gpu:
     # adjust as necessary: limit GPU memory to be used by TensorFlow to leave some to OpenCL-based computations
     limit_gpu_memory(0.1, total_memory=50000)
 
-model = StarDist2D.from_pretrained('2D_versatile_fluo')
+model = StarDist2D.from_pretrained("2D_versatile_fluo")
 nucleus_radius_pixel = 10 / 0.3  # 10 microns divided by 0.3 microns per pixel
+
 
 def predict_instances(x):
     ch1 = x[..., 0]
     ch2 = x[..., 1]
 
-    ch1_top = cle.top_hat_sphere(ch1, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel)
+    ch1_top = cle.top_hat_sphere(
+        ch1, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel
+    )
     # blur
     ch1_blur = cle.gaussian_blur(ch1_top, sigma_x=2.0, sigma_y=2.0)
     normal_ch1 = normalize(ch1_blur.get())
 
-    ch2_top = cle.top_hat_sphere(ch2, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel)
+    ch2_top = cle.top_hat_sphere(
+        ch2, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel
+    )
     ch2_blur = cle.gaussian_blur(ch2_top, sigma_x=2.0, sigma_y=2.0)
     normal_ch2 = normalize(ch2_blur.get())
 
@@ -67,12 +72,12 @@ def predict_instances(x):
     dapieq_labels, _ = model.predict_instances(max_projected)
     return dapieq_labels
 
+
 Y_val_pred = [predict_instances(x) for x in tqdm(X)]
 
 taus = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 stats = [
-    matching_dataset(Y, Y_val_pred, thresh=t, show_progress=False)
-    for t in tqdm(taus)
+    matching_dataset(Y, Y_val_pred, thresh=t, show_progress=False) for t in tqdm(taus)
 ]
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))

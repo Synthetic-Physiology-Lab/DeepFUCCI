@@ -30,7 +30,6 @@ from csbdeep.utils import normalize
 from skimage.io import imread
 from skimage.measure import label as label_skimage
 from stardist import fill_label_holes, gputools_available
-from stardist.matching import matching
 from stardist.models import StarDist2D
 from tqdm import tqdm
 
@@ -168,7 +167,9 @@ def load_directory_dataset(images_dir, masks_dir, relabel=False, channel_order="
     return images, masks, filenames
 
 
-def load_single_files_dataset(image_files, mask_files, relabel=False, channel_order="YXC"):
+def load_single_files_dataset(
+    image_files, mask_files, relabel=False, channel_order="YXC"
+):
     """Load dataset from explicit file list."""
     existing_images = [f for f in image_files if Path(f).exists()]
     existing_masks = [f for f in mask_files if Path(f).exists()]
@@ -368,7 +369,7 @@ def main():
                 }
                 print(f"    Loaded {len(X_ext)} images")
             else:
-                print(f"    Not found or empty")
+                print("    Not found or empty")
         except Exception as e:
             print(f"    Error: {e}")
 
@@ -387,7 +388,9 @@ def main():
             continue
         try:
             models[model_name] = {
-                "model": StarDist2D(None, name=config["name"], basedir=config["basedir"]),
+                "model": StarDist2D(
+                    None, name=config["name"], basedir=config["basedir"]
+                ),
                 "input_fn": config["input_fn"],
             }
             print(f"Loaded model: {model_name}")
@@ -402,9 +405,9 @@ def main():
     all_results = {}
 
     for dataset_name, dataset_info in all_datasets.items():
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Processing: {dataset_name}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         images = dataset_info["images"]
         masks = dataset_info["masks"]
@@ -457,15 +460,25 @@ def main():
     print("=" * 60)
 
     # Colors and markers
-    model_colors = {"1 CH (tubulin)": "blue", "2 CH (cyan+magenta)": "orange", "3 CH (all)": "green"}
-    model_markers = {"1 CH (tubulin)": "o", "2 CH (cyan+magenta)": "s", "3 CH (all)": "^"}
+    model_colors = {
+        "1 CH (tubulin)": "blue",
+        "2 CH (cyan+magenta)": "orange",
+        "3 CH (all)": "green",
+    }
+    model_markers = {
+        "1 CH (tubulin)": "o",
+        "2 CH (cyan+magenta)": "s",
+        "3 CH (all)": "^",
+    }
 
     # Plot 1: Detection rate vs SNR for each dataset
     n_datasets = len(all_results)
     n_cols = min(3, n_datasets)
     n_rows = (n_datasets + n_cols - 1) // n_cols
 
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(6 * n_cols, 5 * n_rows), squeeze=False)
+    fig, axes = plt.subplots(
+        n_rows, n_cols, figsize=(6 * n_cols, 5 * n_rows), squeeze=False
+    )
 
     for idx, (dataset_name, dataset_results) in enumerate(all_results.items()):
         ax = axes[idx // n_cols, idx % n_cols]

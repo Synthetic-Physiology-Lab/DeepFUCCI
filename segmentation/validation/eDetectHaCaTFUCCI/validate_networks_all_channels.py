@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from csbdeep.utils import normalize
 from aicsimageio import AICSImage
+from pathlib import Path
 
 from stardist import (
     fill_label_holes,
@@ -25,28 +26,44 @@ with open("metadata.yml", "r") as metadatafile:
 channels = metadata["channels"]
 
 filename = metadata["filename"]
+if not Path(filename).exists():
+    filename = Path("../../../data/HaCaT_Han_et_al") / filename
+
 
 img_stream = AICSImage(filename)
 label_stream = AICSImage("labels_manual_annotation.tif")
 
 X = []
-Y = np.zeros(shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dims.X), dtype=np.uint16)
-labels_1d = np.zeros(shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dims.X), dtype=np.uint16)
-labels_2d = np.zeros(shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dims.X), dtype=np.uint16)
-labels_3d = np.zeros(shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dims.X), dtype=np.uint16)
+Y = np.zeros(
+    shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dims.X), dtype=np.uint16
+)
+labels_1d = np.zeros(
+    shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dims.X), dtype=np.uint16
+)
+labels_2d = np.zeros(
+    shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dims.X), dtype=np.uint16
+)
+labels_3d = np.zeros(
+    shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dims.X), dtype=np.uint16
+)
 
 
-model_1d = StarDist2D(None, name="stardist", basedir="../training_1_channel_stardist/models")
-model_2d = StarDist2D(None, name="stardist", basedir="../training_2_channels_stardist/models")
-model_3d = StarDist2D(None, name="stardist", basedir="../training_3_channels_stardist/models")
-
+model_1d = StarDist2D(
+    None, name="stardist_1_channel_latest", basedir=Path.home() / "models"
+)
+model_2d = StarDist2D(
+    None, name="stardist_2_channel_latest", basedir=Path.home() / "models"
+)
+model_3d = StarDist2D(
+    None, name="stardist_3_channel_latest", basedir=Path.home() / "models"
+)
 
 
 for T in tqdm(range(img_stream.dims.T)):
     img_tubulin = img_stream.get_image_data("YX", C=int(channels["tubulin"]), T=T)
     img_cyan = img_stream.get_image_data("YX", C=int(channels["cyan"]), T=T)
     img_magenta = img_stream.get_image_data("YX", C=int(channels["magenta"]), T=T)
-    gt_labels = label_stream.get_image_data("YX", Z=T) 
+    gt_labels = label_stream.get_image_data("YX", Z=T)
 
     # normalize image
     img_tubulin = normalize(img_tubulin, pmin=1, clip=True)
@@ -59,11 +76,15 @@ for T in tqdm(range(img_stream.dims.T)):
     labels_1d[T] = labels[:]
 
     # 2 channel model
-    labels, details = model_2d.predict_instances(np.moveaxis(np.stack([img_cyan, img_magenta]), 0, -1))
+    labels, details = model_2d.predict_instances(
+        np.moveaxis(np.stack([img_cyan, img_magenta]), 0, -1)
+    )
     labels_2d[T] = labels[:]
 
     # 3 channel model
-    labels, details = model_3d.predict_instances(np.moveaxis(np.stack([img_cyan, img_magenta, img_tubulin]), 0, -1))
+    labels, details = model_3d.predict_instances(
+        np.moveaxis(np.stack([img_cyan, img_magenta, img_tubulin]), 0, -1)
+    )
     labels_3d[T] = labels[:]
     Y[T] = gt_labels[:]
 
@@ -104,6 +125,7 @@ plt.show()
 use_gpu = gputools_available()
 print("Using GPU: ", use_gpu)
 
+i = 1
 for Y_val_pred in [labels_1d, labels_2d, labels_3d]:
     plot_img_label(X[0], Y[0], lbl_title="label GT")
     plot_img_label(X[0], Y_val_pred[0], lbl_title="label Pred")
@@ -139,4 +161,5 @@ for Y_val_pred in [labels_1d, labels_2d, labels_3d]:
     ax2.legend()
     plt.show()
 
-    print("Stats at 0.5 IoU: ", stats[4])
+    print("Stats at 0.5 IoU for {i} CH: ", stats[4])
+    i += 1

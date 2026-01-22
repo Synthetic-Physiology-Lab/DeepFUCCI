@@ -22,7 +22,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-from csbdeep.utils import normalize
 from skimage.io import imread
 from skimage.measure import label as label_skimage
 from stardist import fill_label_holes
@@ -132,9 +131,9 @@ def load_directory_dataset(images_dir, masks_dir, relabel=False, channel_order="
     assert len(image_files) == len(mask_files), (
         f"Mismatch: {len(image_files)} images vs {len(mask_files)} masks"
     )
-    assert all(
-        Path(x).name == Path(y).name for x, y in zip(image_files, mask_files)
-    ), "Image and mask filenames don't match"
+    assert all(Path(x).name == Path(y).name for x, y in zip(image_files, mask_files)), (
+        "Image and mask filenames don't match"
+    )
 
     images = []
     for f in tqdm(image_files, desc="Loading images"):
@@ -154,7 +153,9 @@ def load_directory_dataset(images_dir, masks_dir, relabel=False, channel_order="
     return images, masks, filenames
 
 
-def load_single_files_dataset(image_files, mask_files, relabel=False, channel_order="YXC"):
+def load_single_files_dataset(
+    image_files, mask_files, relabel=False, channel_order="YXC"
+):
     """Load dataset from explicit list of image and mask files."""
     existing_images = [f for f in image_files if Path(f).exists()]
     existing_masks = [f for f in mask_files if Path(f).exists()]
@@ -239,7 +240,7 @@ def main():
                 datasets[name] = (X_ext, Y_ext)
                 print(f"    Loaded {len(X_ext)} images")
             else:
-                print(f"    Not found or empty, skipping")
+                print("    Not found or empty, skipping")
         except Exception as e:
             print(f"    Error loading {name}: {e}")
 
@@ -378,7 +379,9 @@ def main():
             "all_snr": result["all_snr"],
             "n_nuclei": len(result["all_snr"]),
             "mean": float(np.mean(result["all_snr"])) if result["all_snr"] else None,
-            "median": float(np.median(result["all_snr"])) if result["all_snr"] else None,
+            "median": float(np.median(result["all_snr"]))
+            if result["all_snr"]
+            else None,
             "std": float(np.std(result["all_snr"])) if result["all_snr"] else None,
             "min": float(min(result["all_snr"])) if result["all_snr"] else None,
             "max": float(max(result["all_snr"])) if result["all_snr"] else None,

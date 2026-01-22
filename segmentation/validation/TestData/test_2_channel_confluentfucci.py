@@ -36,14 +36,13 @@ diameter = reference_diameter / pixel_size
 model_green = models.CellposeModel(gpu=True, model_type="nuclei_green_v2")
 model_red = models.CellposeModel(gpu=True, model_type="nuclei_red_v2")
 
+
 def get_confluentfucci_masks(img_cyan, img_magenta):
     masks_cyan, _, _ = model_green.eval(img_cyan, diameter=diameter)
     masks_magenta, _, _ = model_red.eval(img_magenta, diameter=diameter)
     # refine masks
-    masks_cyan = cle.opening_labels(masks_cyan,
-                                    radius=3)
-    masks_magenta = cle.opening_labels(masks_magenta,
-                                    radius=3)
+    masks_cyan = cle.opening_labels(masks_cyan, radius=3)
+    masks_magenta = cle.opening_labels(masks_magenta, radius=3)
 
     masks = cle.merge_touching_labels(masks_cyan + masks_magenta)
     masks = cle.closing_labels(cle.label(masks), radius=3).get()
@@ -54,8 +53,7 @@ Y_val_pred = [get_confluentfucci_masks(x[..., 1], x[..., 0]) for x in tqdm(X_val
 
 taus = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 stats = [
-    matching_dataset(Y, Y_val_pred, thresh=t, show_progress=False)
-    for t in tqdm(taus)
+    matching_dataset(Y, Y_val_pred, thresh=t, show_progress=False) for t in tqdm(taus)
 ]
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))

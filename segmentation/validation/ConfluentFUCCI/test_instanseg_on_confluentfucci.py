@@ -12,7 +12,7 @@ from stardist import (
 from stardist.matching import matching_dataset
 
 DATA_DIR = "../../../data"
-test_data_dir = f"{DATA_DIR}/test_confluentfucci"
+test_data_dir = f"{DATA_DIR}/test_confluent_fucci_data"
 X = sorted(glob(f"{test_data_dir}/images/*.tif"))
 Y = sorted(glob(f"{test_data_dir}/masks/*.tif"))
 assert all(Path(x).name == Path(y).name for x, y in zip(X, Y))
@@ -28,12 +28,22 @@ Y = [fill_label_holes(y) for y in tqdm(Y)]
 instanseg_fluorescence = InstanSeg("fluorescence_nuclei_and_cells", verbosity=1)
 pixel_size = 0.3
 
-Y_val_pred = [instanseg_fluorescence.eval_small_image(image=np.moveaxis(x[..., 0:2], -1, 0), pixel_size=pixel_size, return_image_tensor=False, target="nuclei").squeeze().numpy().astype(np.uint16) for x in tqdm(X)]
+Y_val_pred = [
+    instanseg_fluorescence.eval_small_image(
+        image=np.moveaxis(x[..., 0:2], -1, 0),
+        pixel_size=pixel_size,
+        return_image_tensor=False,
+        target="nuclei",
+    )
+    .squeeze()
+    .numpy()
+    .astype(np.uint16)
+    for x in tqdm(X)
+]
 
 taus = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 stats = [
-    matching_dataset(Y, Y_val_pred, thresh=t, show_progress=False)
-    for t in tqdm(taus)
+    matching_dataset(Y, Y_val_pred, thresh=t, show_progress=False) for t in tqdm(taus)
 ]
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))

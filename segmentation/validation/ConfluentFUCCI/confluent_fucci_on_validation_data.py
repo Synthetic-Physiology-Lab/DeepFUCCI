@@ -49,10 +49,8 @@ def get_confluentfucci_masks(img_cyan, img_magenta):
     masks_cyan, _, _ = model_green.eval(img_cyan, diameter=diameter)
     masks_magenta, _, _ = model_red.eval(img_magenta, diameter=diameter)
     # refine masks
-    masks_cyan = cle.opening_labels(masks_cyan,
-                                    radius=3)
-    masks_magenta = cle.opening_labels(masks_magenta,
-                                    radius=3)
+    masks_cyan = cle.opening_labels(masks_cyan, radius=3)
+    masks_magenta = cle.opening_labels(masks_magenta, radius=3)
 
     masks = cle.merge_touching_labels(masks_cyan + masks_magenta)
     masks = cle.closing_labels(cle.label(masks), radius=3).get()

@@ -16,4 +16,3 @@ OmeTiffWriter.save(
     dim_order="TCYX",
     physical_pixel_sizes=image.physical_pixel_sizes,
 )
-

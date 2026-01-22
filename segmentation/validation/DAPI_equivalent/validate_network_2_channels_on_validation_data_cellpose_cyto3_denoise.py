@@ -18,14 +18,20 @@ matplotlib.rcParams["image.interpolation"] = "none"
 np.random.seed(42)
 lbl_cmap = random_label_cmap()
 
-DATA_DIR = "../../data"
+DATA_DIR = "../../../data"
 training_data_dir = f"{DATA_DIR}/training_data_tiled_strict_classified"
 # use the same data split as in training
 with open(f"{training_data_dir}/dataset_split.json") as fp:
     dataset_split = json.load(fp)
 
-X = [imread(f"{training_data_dir}/images/{img_name}") for img_name in dataset_split["validation"]]
-Y_val = [fill_label_holes(imread(f"{training_data_dir}/masks/{img_name}")) for img_name in dataset_split["validation"]]
+X = [
+    imread(f"{training_data_dir}/images/{img_name}")
+    for img_name in dataset_split["validation"]
+]
+Y_val = [
+    fill_label_holes(imread(f"{training_data_dir}/masks/{img_name}"))
+    for img_name in dataset_split["validation"]
+]
 
 axis_norm = (0, 1)  # normalize channels independently
 X_val = [normalize(x[..., 0:2], 1, 99.8, axis=axis_norm) for x in tqdm(X)]
@@ -33,10 +39,7 @@ print("number of validation images: %3d" % len(X))
 
 # Use CellposeDenoiseModel with cyto3 and denoise_cyto3 restoration
 model = denoise.CellposeDenoiseModel(
-    gpu=True,
-    model_type="cyto3",
-    restore_type="denoise_cyto3",
-    chan2_restore=True
+    gpu=True, model_type="cyto3", restore_type="denoise_cyto3", chan2_restore=True
 )
 nucleus_radius_pixel = 10 / 0.3  # 10 microns divided by 0.3 microns per pixel
 
@@ -51,9 +54,7 @@ def predict_instances(x):
     # Stack as 2D grayscale image for cyto3 with denoising
     # channels=[0,0] means grayscale image with no secondary channel
     masks, flows, styles, imgs_restored = model.eval(
-        max_projected,
-        diameter=2.0 * nucleus_radius_pixel,
-        channels=[0, 0]
+        max_projected, diameter=2.0 * nucleus_radius_pixel, channels=[0, 0]
     )
     return masks
 

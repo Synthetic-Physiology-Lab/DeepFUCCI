@@ -6,6 +6,7 @@ from tqdm import tqdm
 from tifffile import imread
 from csbdeep.utils import normalize
 from instanseg import InstanSeg
+from pathlib import Path
 
 from stardist import (
     random_label_cmap,
@@ -17,7 +18,14 @@ matplotlib.rcParams["image.interpolation"] = "none"
 np.random.seed(42)
 lbl_cmap = random_label_cmap()
 
-X = [np.moveaxis(imread("image_cyan_magenta_last_frame.tif"), 0, -1)]
+data_file = "image_cyan_magenta_last_frame.tif"
+if not Path(data_file).exists():
+    data_file = Path("../../../../data/test_cellmaptracer") / data_file
+    if not Path(data_file).exists():
+        raise FileNotFoundError("Data file not there")
+
+
+X = [np.moveaxis(imread(data_file), 0, -1)]
 Y_val = [imread("gt_last_frame.tif")]
 
 axis_norm = (0, 1)  # normalize channels independently
@@ -27,7 +35,18 @@ print("number of validation images: %3d" % len(X))
 instanseg_fluorescence = InstanSeg("fluorescence_nuclei_and_cells", verbosity=1)
 pixel_size = 0.3
 
-Y_val_pred = [instanseg_fluorescence.eval_small_image(image=np.moveaxis(x[..., 0:2], -1, 0), pixel_size=pixel_size, return_image_tensor=False, target="nuclei").squeeze().numpy().astype(np.uint16) for x in tqdm(X_val)]
+Y_val_pred = [
+    instanseg_fluorescence.eval_small_image(
+        image=np.moveaxis(x[..., 0:2], -1, 0),
+        pixel_size=pixel_size,
+        return_image_tensor=False,
+        target="nuclei",
+    )
+    .squeeze()
+    .numpy()
+    .astype(np.uint16)
+    for x in tqdm(X_val)
+]
 
 taus = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 stats = [

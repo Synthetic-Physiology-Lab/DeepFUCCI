@@ -4,6 +4,7 @@ from tqdm import tqdm
 from skimage.io import imread
 from skimage.measure import label as label_skimage
 from csbdeep.utils import normalize
+from pathlib import Path
 
 from stardist import (
     fill_label_holes,
@@ -17,7 +18,13 @@ matplotlib.rcParams["image.interpolation"] = "none"
 np.random.seed(42)
 lbl_cmap = random_label_cmap()
 
-X = [np.moveaxis(imread("frame_69.tif"), 0, -1)]
+data_file = "frame_69.tif"
+if not Path(data_file).exists():
+    data_file = Path("../../../../data/test_cottonetal") / data_file
+    if not Path(data_file).exists():
+        raise FileNotFoundError("Data file not there")
+
+X = [np.moveaxis(imread(data_file), 0, -1)]
 Y = [imread("gt_frame_69.tif")]
 
 axis_norm = (0, 1)  # normalize channels independently
@@ -35,18 +42,14 @@ if use_gpu:
     # adjust as necessary: limit GPU memory to be used by TensorFlow to leave some to OpenCL-based computations
     limit_gpu_memory(0.2, total_memory=50000)
 
-model_2d = StarDist2D(None, name="stardist", basedir="../training_2_channels_stardist/models")
+model_2d = StarDist2D(
+    None, name="stardist_2_channel_latest", basedir=Path.home() / "models"
+)
 
 scale = 2.0
 print("Scaling with factor: ", scale)
 
-Y_val_pred_2d = [
-    model_2d.predict_instances(
-        x,
-        scale=scale
-    )[0]
-    for x in tqdm(X)
-]
+Y_val_pred_2d = [model_2d.predict_instances(x, scale=scale)[0] for x in tqdm(X)]
 
 taus = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 stats_2d = [

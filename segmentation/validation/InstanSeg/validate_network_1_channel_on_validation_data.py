@@ -19,14 +19,20 @@ matplotlib.rcParams["image.interpolation"] = "none"
 np.random.seed(42)
 lbl_cmap = random_label_cmap()
 
-DATA_DIR = "../../data"
+DATA_DIR = "../../../data"
 training_data_dir = f"{DATA_DIR}/training_data_tiled_strict_classified"
 # use the same data split as in training
 with open(f"{training_data_dir}/dataset_split.json") as fp:
     dataset_split = json.load(fp)
 
-X = [imread(f"{training_data_dir}/images/{img_name}") for img_name in dataset_split["validation"]]
-Y_val = [fill_label_holes(imread(f"{training_data_dir}/masks/{img_name}")) for img_name in dataset_split["validation"]]
+X = [
+    imread(f"{training_data_dir}/images/{img_name}")
+    for img_name in dataset_split["validation"]
+]
+Y_val = [
+    fill_label_holes(imread(f"{training_data_dir}/masks/{img_name}"))
+    for img_name in dataset_split["validation"]
+]
 
 axis_norm = (0, 1)  # normalize channels independently
 X_val = [normalize(x, 1, 99.8, axis=axis_norm) for x in tqdm(X)]
@@ -39,7 +45,18 @@ print("Using GPU: ", use_gpu)
 instanseg_fluorescence = InstanSeg("fluorescence_nuclei_and_cells", verbosity=1)
 pixel_size = 0.3
 
-Y_val_pred = [instanseg_fluorescence.eval_small_image(image=np.moveaxis(x[..., 2], -1, 0), pixel_size=pixel_size, return_image_tensor=False, target="nuclei").squeeze().numpy().astype(np.uint16) for x in tqdm(X_val)]
+Y_val_pred = [
+    instanseg_fluorescence.eval_small_image(
+        image=np.moveaxis(x[..., 2], -1, 0),
+        pixel_size=pixel_size,
+        return_image_tensor=False,
+        target="nuclei",
+    )
+    .squeeze()
+    .numpy()
+    .astype(np.uint16)
+    for x in tqdm(X_val)
+]
 
 taus = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 stats = [

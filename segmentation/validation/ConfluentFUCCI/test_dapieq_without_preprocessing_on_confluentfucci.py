@@ -21,7 +21,7 @@ np.random.seed(42)
 lbl_cmap = random_label_cmap()
 
 DATA_DIR = "../../../data"
-test_data_dir = f"{DATA_DIR}/test_confluentfucci"
+test_data_dir = f"{DATA_DIR}/test_confluent_fucci_data"
 X = sorted(glob(f"{test_data_dir}/images/*.tif"))
 Y = sorted(glob(f"{test_data_dir}/masks/*.tif"))
 assert all(Path(x).name == Path(y).name for x, y in zip(X, Y))
@@ -40,10 +40,12 @@ print("Using GPU: ", use_gpu)
 
 if use_gpu:
     from csbdeep.utils.tf import limit_gpu_memory
+
     limit_gpu_memory(0.1, total_memory=50000)
 
-model = StarDist2D.from_pretrained('2D_versatile_fluo')
+model = StarDist2D.from_pretrained("2D_versatile_fluo")
 nucleus_radius_pixel = 10 / 0.3  # 10 microns divided by 0.3 microns per pixel
+
 
 def predict_instances(x):
     ch1 = x[..., 0]

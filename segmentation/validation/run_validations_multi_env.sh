@@ -28,13 +28,12 @@ set -e
 # ============================================================
 # Configuration - Edit these to match your environment names
 # ============================================================
-STARDIST_ENV="stardist_env"
+STARDIST_ENV="kerasEnv"
 INSTANSEG_ENV="instanseg_env"
 CELLPOSE_ENV="cellpose_env"
 
 # Use micromamba or conda
-CONDA_CMD="micromamba"
-# CONDA_CMD="conda"
+CONDA_CMD="conda"
 
 # ============================================================
 # Script setup
@@ -96,7 +95,10 @@ echo "Stage 2: InstanSeg environment ($INSTANSEG_ENV)"
 echo "============================================================"
 echo ""
 
-$CONDA_CMD activate $INSTANSEG_ENV
+# deactivate other environment and activate new
+deactivate
+# $CONDA_CMD activate $INSTANSEG_ENV
+source ~/instanseg_venv_new/bin/activate
 
 python update_latex_table.py --framework instanseg --skip-snr --from-json "$RESULTS_FILE" --save-json "$RESULTS_FILE" $EXTRA_ARGS
 
@@ -113,7 +115,9 @@ echo "Stage 3: Cellpose environment ($CELLPOSE_ENV)"
 echo "============================================================"
 echo ""
 
-$CONDA_CMD activate $CELLPOSE_ENV
+deactivate
+# $CONDA_CMD activate $CELLPOSE_ENV
+source ~/cellpose_venv/bin/activate
 
 # Run cellpose scripts
 python update_latex_table.py --framework cellpose --skip-snr --from-json "$RESULTS_FILE" --save-json "$RESULTS_FILE" $EXTRA_ARGS
@@ -133,6 +137,7 @@ echo "Updating LaTeX table with all results"
 echo "============================================================"
 echo ""
 
+deactivate
 # Use stardist env for final update (has all required packages for table update)
 $CONDA_CMD activate $STARDIST_ENV
 

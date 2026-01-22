@@ -6,6 +6,7 @@ from tqdm import tqdm
 from csbdeep.utils import normalize
 from aicsimageio import AICSImage
 import pyclesperanto_prototype as cle
+from pathlib import Path
 
 from stardist import (
     fill_label_holes,
@@ -25,8 +26,10 @@ with open("metadata.yml", "r") as metadatafile:
 # Channels
 channels = metadata["channels"]
 
-filename = "merged.ome.tif"
-metadata["filename"]
+filename = metadata["filename"]
+if not Path(filename).exists():
+    filename = Path("../../../data/HaCaT_Han_et_al") / filename
+
 
 img_stream = AICSImage(filename)
 label_stream = AICSImage("labels_manual_annotation.tif")
@@ -37,7 +40,7 @@ Y = []
 for T in tqdm(range(img_stream.dims.T)):
     img_cyan = img_stream.get_image_data("YX", C=int(channels["cyan"]), T=T)
     img_magenta = img_stream.get_image_data("YX", C=int(channels["magenta"]), T=T)
-    gt_labels = label_stream.get_image_data("YX", Z=T) 
+    gt_labels = label_stream.get_image_data("YX", Z=T)
     # normalize image
     Y.append(gt_labels)
     X.append(np.moveaxis(np.stack([img_cyan, img_magenta]), 0, -1))
@@ -54,21 +57,27 @@ print("Using GPU: ", use_gpu)
 
 if use_gpu:
     from csbdeep.utils.tf import limit_gpu_memory
+
     limit_gpu_memory(0.1, total_memory=50000)
 
-model = StarDist2D.from_pretrained('2D_versatile_fluo')
+model = StarDist2D.from_pretrained("2D_versatile_fluo")
 nucleus_radius_pixel = 10 / 0.33  # 10 microns divided by 0.3 microns per pixel
+
 
 def predict_instances(x):
     ch1 = x[..., 0]
     ch2 = x[..., 1]
 
-    ch1_top = cle.top_hat_sphere(ch1, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel)
+    ch1_top = cle.top_hat_sphere(
+        ch1, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel
+    )
     # blur
     ch1_blur = cle.gaussian_blur(ch1_top, sigma_x=2.0, sigma_y=2.0)
     normal_ch1 = normalize(ch1_blur.get())
 
-    ch2_top = cle.top_hat_sphere(ch2, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel)
+    ch2_top = cle.top_hat_sphere(
+        ch2, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel
+    )
     ch2_blur = cle.gaussian_blur(ch2_top, sigma_x=2.0, sigma_y=2.0)
     normal_ch2 = normalize(ch2_blur.get())
 
@@ -81,8 +90,7 @@ Y_val_pred = [predict_instances(x) for x in tqdm(X)]
 
 taus = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 stats = [
-    matching_dataset(Y, Y_val_pred, thresh=t, show_progress=False)
-    for t in tqdm(taus)
+    matching_dataset(Y, Y_val_pred, thresh=t, show_progress=False) for t in tqdm(taus)
 ]
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))

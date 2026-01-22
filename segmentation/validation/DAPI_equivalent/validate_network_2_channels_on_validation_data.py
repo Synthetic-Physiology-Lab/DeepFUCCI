@@ -20,14 +20,20 @@ matplotlib.rcParams["image.interpolation"] = "none"
 np.random.seed(42)
 lbl_cmap = random_label_cmap()
 
-DATA_DIR = "../../data"
+DATA_DIR = "../../../data"
 training_data_dir = f"{DATA_DIR}/training_data_tiled_strict_classified"
 # use the same data split as in training
 with open(f"{training_data_dir}/dataset_split.json") as fp:
     dataset_split = json.load(fp)
 
-X = [imread(f"{training_data_dir}/images/{img_name}") for img_name in dataset_split["validation"]]
-Y_val = [fill_label_holes(imread(f"{training_data_dir}/masks/{img_name}")) for img_name in dataset_split["validation"]]
+X = [
+    imread(f"{training_data_dir}/images/{img_name}")
+    for img_name in dataset_split["validation"]
+]
+Y_val = [
+    fill_label_holes(imread(f"{training_data_dir}/masks/{img_name}"))
+    for img_name in dataset_split["validation"]
+]
 
 axis_norm = (0, 1)  # normalize channels independently
 X_val = [normalize(x[..., 0:2], 1, 99.8, axis=axis_norm) for x in tqdm(X)]
@@ -39,21 +45,27 @@ print("Using GPU: ", use_gpu)
 
 if use_gpu:
     from csbdeep.utils.tf import limit_gpu_memory
+
     limit_gpu_memory(0.1, total_memory=50000)
 
-model = StarDist2D.from_pretrained('2D_versatile_fluo')
+model = StarDist2D.from_pretrained("2D_versatile_fluo")
 nucleus_radius_pixel = 10 / 0.3  # 10 microns divided by 0.3 microns per pixel
+
 
 def predict_instances(x):
     ch1 = x[..., 0]
     ch2 = x[..., 1]
 
-    ch1_top = cle.top_hat_sphere(ch1, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel)
+    ch1_top = cle.top_hat_sphere(
+        ch1, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel
+    )
     # blur
     ch1_blur = cle.gaussian_blur(ch1_top, sigma_x=2.0, sigma_y=2.0)
     normal_ch1 = normalize(ch1_blur.get())
 
-    ch2_top = cle.top_hat_sphere(ch2, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel)
+    ch2_top = cle.top_hat_sphere(
+        ch2, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel
+    )
     ch2_blur = cle.gaussian_blur(ch2_top, sigma_x=2.0, sigma_y=2.0)
     normal_ch2 = normalize(ch2_blur.get())
 

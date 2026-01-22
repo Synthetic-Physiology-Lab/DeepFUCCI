@@ -22,7 +22,7 @@ np.random.seed(42)
 lbl_cmap = random_label_cmap()
 
 DATA_DIR = "../../../data"
-test_data_dir = f"{DATA_DIR}/test_confluentfucci"
+test_data_dir = f"{DATA_DIR}/test_confluent_fucci_data"
 X = sorted(glob(f"{test_data_dir}/images/*.tif"))
 Y = sorted(glob(f"{test_data_dir}/masks/*.tif"))
 assert all(Path(x).name == Path(y).name for x, y in zip(X, Y))
@@ -30,7 +30,7 @@ assert all(Path(x).name == Path(y).name for x, y in zip(X, Y))
 X = list(map(imread, X))
 Y = list(map(imread, Y))
 
-X_val = [x[..., 0:2]for x in tqdm(X)]
+X_val = [x[..., 0:2] for x in tqdm(X)]
 Y_val = [fill_label_holes(skimage_label(y)) for y in tqdm(Y)]
 print("number of validation images: %3d" % len(X))
 
@@ -40,21 +40,27 @@ print("Using GPU: ", use_gpu)
 
 if use_gpu:
     from csbdeep.utils.tf import limit_gpu_memory
+
     limit_gpu_memory(0.1, total_memory=50000)
 
-model = StarDist2D.from_pretrained('2D_versatile_fluo')
+model = StarDist2D.from_pretrained("2D_versatile_fluo")
 nucleus_radius_pixel = 10 / 0.3  # 10 microns divided by 0.3 microns per pixel
+
 
 def predict_instances(x):
     ch1 = x[..., 0]
     ch2 = x[..., 1]
 
-    ch1_top = cle.top_hat_sphere(ch1, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel)
+    ch1_top = cle.top_hat_sphere(
+        ch1, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel
+    )
     # blur
     ch1_blur = cle.gaussian_blur(ch1_top, sigma_x=2.0, sigma_y=2.0)
     normal_ch1 = normalize(ch1_blur.get())
 
-    ch2_top = cle.top_hat_sphere(ch2, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel)
+    ch2_top = cle.top_hat_sphere(
+        ch2, radius_x=2.0 * nucleus_radius_pixel, radius_y=2.0 * nucleus_radius_pixel
+    )
     ch2_blur = cle.gaussian_blur(ch2_top, sigma_x=2.0, sigma_y=2.0)
     normal_ch2 = normalize(ch2_blur.get())
 

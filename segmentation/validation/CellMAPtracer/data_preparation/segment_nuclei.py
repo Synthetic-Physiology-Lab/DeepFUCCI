@@ -29,13 +29,23 @@ print("Scaling with factor: ", scale)
 
 img_stream = AICSImage(filename)
 print(img_stream.dims)
-labels_1d = np.zeros(shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dims.X), dtype=np.uint16)
-labels_2d = np.zeros(shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dims.X), dtype=np.uint16)
-labels_3d = np.zeros(shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dims.X), dtype=np.uint16)
+labels_1d = np.zeros(
+    shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dims.X), dtype=np.uint16
+)
+labels_2d = np.zeros(
+    shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dims.X), dtype=np.uint16
+)
+labels_3d = np.zeros(
+    shape=(img_stream.dims.T, img_stream.dims.Y, img_stream.dims.X), dtype=np.uint16
+)
 
-model_1d = StarDist2D.from_pretrained('2D_versatile_fluo')
-model_2d = StarDist2D(None, name='stardist_2_channel_latest', basedir=Path.home() / 'models')
-model_3d = StarDist2D(None, name='stardist_3_channel_latest', basedir=Path.home() / 'models')
+model_1d = StarDist2D.from_pretrained("2D_versatile_fluo")
+model_2d = StarDist2D(
+    None, name="stardist_2_channel_latest", basedir=Path.home() / "models"
+)
+model_3d = StarDist2D(
+    None, name="stardist_3_channel_latest", basedir=Path.home() / "models"
+)
 if flatfield_correction:
     basic_tubulin = BaSiC.load_model("basic_model_tubulin")
     basic_cyan = BaSiC.load_model("basic_model_cyan")
@@ -62,11 +72,15 @@ for T in tqdm(range(img_stream.dims.T)):
     labels_1d[T] = labels[:]
 
     # 2 channel model
-    labels, details = model_2d.predict_instances(np.moveaxis(np.stack([img_cyan, img_magenta]), 0, -1), scale=scale)
+    labels, details = model_2d.predict_instances(
+        np.moveaxis(np.stack([img_cyan, img_magenta]), 0, -1), scale=scale
+    )
     labels_2d[T] = labels[:]
 
     # 3 channel model
-    labels, details = model_3d.predict_instances(np.moveaxis(np.stack([img_cyan, img_magenta, img_tubulin]), 0, -1), scale=scale)
+    labels, details = model_3d.predict_instances(
+        np.moveaxis(np.stack([img_cyan, img_magenta, img_tubulin]), 0, -1), scale=scale
+    )
     labels_3d[T] = labels[:]
 
 imsave("stardist_labels_3_channel.tif", labels_3d)

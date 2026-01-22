@@ -18,7 +18,7 @@ matplotlib.rcParams["image.interpolation"] = "none"
 np.random.seed(42)
 lbl_cmap = random_label_cmap()
 
-DATA_DIR = "../../data"
+DATA_DIR = "../../../data"
 test_data_dir = f"{DATA_DIR}/data_set_HT1080_40x"
 X = sorted(glob(f"{test_data_dir}/images/*.tif"))
 Y = sorted(glob(f"{test_data_dir}/masks/*.tif"))
@@ -39,7 +39,18 @@ print("Using GPU: ", use_gpu)
 instanseg_fluorescence = InstanSeg("fluorescence_nuclei_and_cells", verbosity=1)
 pixel_size = 0.3
 
-Y_val_pred = [instanseg_fluorescence.eval_small_image(image=np.moveaxis(x[..., 2], -1, 0), pixel_size=pixel_size, return_image_tensor=False, target="nuclei").squeeze().numpy().astype(np.uint16) for x in tqdm(X_val)]
+Y_val_pred = [
+    instanseg_fluorescence.eval_small_image(
+        image=np.moveaxis(x[..., 2], -1, 0),
+        pixel_size=pixel_size,
+        return_image_tensor=False,
+        target="nuclei",
+    )
+    .squeeze()
+    .numpy()
+    .astype(np.uint16)
+    for x in tqdm(X_val)
+]
 
 taus = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 stats = [

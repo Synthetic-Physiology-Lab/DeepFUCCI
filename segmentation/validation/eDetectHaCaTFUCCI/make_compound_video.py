@@ -13,7 +13,7 @@ for idx, file in enumerate(all_green_files):
         raise ValueError(f"Distilled wrong file name {green_channel} from {file}")
     red_channel = f"R/{filename}c2.tif"
     yellow_channel = f"Y/{filename}c3.tif"
-    
+
     green_image = AICSImage(green_channel)
     physical_pixel_sizes = green_image.physical_pixel_sizes
     green_image = green_image.get_image_data("YX")
