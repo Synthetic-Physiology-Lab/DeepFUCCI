@@ -1,0 +1,8 @@
+filename: "merged.ome.tif"
+channels:
+  magenta: 0 # red
+  cyan: 1  # green
+  tubulin: 2  # yellow / SMAD
+
+cell_diameter: 30
+nucleus_diameter: 20
