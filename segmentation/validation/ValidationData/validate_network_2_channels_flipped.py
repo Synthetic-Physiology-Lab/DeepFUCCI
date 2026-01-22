@@ -11,6 +11,7 @@ from stardist import (
 )
 from stardist.matching import matching_dataset
 from stardist.models import StarDist2D
+from pathlib import Path
 
 DATA_DIR = "../../../data"
 training_data_dir = f"{DATA_DIR}/training_data_tiled_strict_classified"
@@ -45,7 +46,9 @@ if use_gpu:
     # adjust as necessary: limit GPU memory to be used by TensorFlow to leave some to OpenCL-based computations
     limit_gpu_memory(0.1, total_memory=50000)
 
-model = StarDist2D(None, name="stardist", basedir="training_2_channels_stardist/models")
+model = StarDist2D(
+    None, name="stardist_2_channel_latest", basedir=Path.home() / "models"
+)
 
 Y_val_pred = [model.predict_instances(x)[0] for x in tqdm(X)]
 

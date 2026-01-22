@@ -95,7 +95,7 @@ Y = [fill_label_holes(y) for y in tqdm(Y)]
 assert len(X) > 1, "not enough training data"
 print("number of images: %3d" % len(X))
 
-i = 0
+i = 1
 for Y_val_pred in [labels_1d, labels_2d, labels_3d]:
     taus = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     stats = [
@@ -128,5 +128,5 @@ for Y_val_pred in [labels_1d, labels_2d, labels_3d]:
     ax2.legend()
     plt.show()
 
-    print("Stats at 0.5 IoU for {i} CH: ", stats[4])
+    print(f"Stats at 0.5 IoU for {i} CH: ", stats[4])
     i += 1

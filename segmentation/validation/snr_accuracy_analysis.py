@@ -97,18 +97,18 @@ EXTERNAL_DATASETS = {
 # Model configurations
 MODEL_CONFIGS = {
     "1 CH (tubulin)": {
-        "name": "stardist",
-        "basedir": "training_1_channel_stardist/models",
+        "name": "stardist_1_channel_latest",
+        "basedir": Path.home() / "models",
         "input_fn": lambda x: x[..., 2] if x.ndim == 3 else x,
     },
     "2 CH (cyan+magenta)": {
-        "name": "stardist",
-        "basedir": "training_2_channels_stardist/models",
+        "name": "stardist_2_channel_latest",
+        "basedir": Path.home() / "models",
         "input_fn": lambda x: x[..., 0:2] if x.ndim == 3 else x,
     },
     "3 CH (all)": {
-        "name": "stardist",
-        "basedir": "training_3_channels_stardist/models",
+        "name": "stardist_3_channel_latest",
+        "basedir": Path.home() / "models",
         "input_fn": lambda x: x,
     },
 }
@@ -553,9 +553,9 @@ def main():
             output_data[dataset_name][model_name] = {
                 "n_nuclei": len(data["nucleus_results"]),
                 "overall_recall": float(data["overall_recall"]),
-                "bin_centers": data["bin_centers"],
-                "recalls_per_bin": data["recalls"],
-                "counts_per_bin": data["counts"],
+                "bin_centers": [float(x) for x in data["bin_centers"]],
+                "recalls_per_bin": [float(x) for x in data["recalls"]],
+                "counts_per_bin": [int(x) for x in data["counts"]],
                 "snr_mean": float(np.mean(snr_vals)) if snr_vals else None,
                 "snr_std": float(np.std(snr_vals)) if snr_vals else None,
             }

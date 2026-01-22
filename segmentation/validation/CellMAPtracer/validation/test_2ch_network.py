@@ -43,7 +43,7 @@ if use_gpu:
     limit_gpu_memory(0.1, total_memory=50000)
 
 model_2d = StarDist2D(
-    None, name="stardist", basedir="../training_2_channels_stardist/models"
+    None, name="stardist_2_channel_latest", basedir=Path.home() / "models"
 )
 
 scale = 0.65 / 0.34

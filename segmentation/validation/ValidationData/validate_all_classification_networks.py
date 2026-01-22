@@ -10,6 +10,7 @@ from stardist import (
 )
 from stardist.matching import matching_dataset
 from stardist.models import StarDist2D
+from pathlib import Path
 
 DATA_DIR = "../../../data"
 training_data_dir = f"{DATA_DIR}/training_data_tiled_strict_classified"
@@ -42,18 +43,18 @@ if use_gpu:
 
 model_1d = StarDist2D(
     None,
-    name="stardist_multiclass",
-    basedir="training_1_channel_stardist_classifier/models",
+    name="stardist_multiclass_1_channel_latest",
+    basedir=Path.home() / "models",
 )
 model_2d = StarDist2D(
     None,
-    name="stardist_multiclass",
-    basedir="training_2_channels_stardist_classifier/models",
+    name="stardist_multiclass_2_channel_latest",
+    basedir=Path.home() / "models",
 )
 model_3d = StarDist2D(
     None,
-    name="stardist_multiclass",
-    basedir="training_3_channels_stardist_classifier/models",
+    name="stardist_multiclass_3_channel_latest",
+    basedir=Path.home() / "models",
 )
 
 Y_val_pred_1d = [model_1d.predict_instances(x[..., 2])[0] for x in tqdm(X)]
