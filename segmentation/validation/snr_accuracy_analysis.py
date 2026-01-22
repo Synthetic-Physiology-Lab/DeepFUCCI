@@ -250,21 +250,33 @@ def compute_snr_per_nucleus(images, masks):
 
 
 def analyze_accuracy_vs_snr(images, masks, predictions, snr_data, iou_threshold=0.5):
-    """Analyze detection accuracy as a function of SNR."""
+    """
+    Analyze detection accuracy as a function of SNR.
+
+    Returns per-nucleus results (for SNR-binned recall) and overall counts
+    for computing accuracy = TP / (TP + FN + FP).
+    """
     nucleus_results = []
+    total_tp = 0
+    total_fn = 0
+    total_fp = 0
 
     for img_idx, (mask_gt, mask_pred) in enumerate(zip(masks, predictions)):
         gt_labels = np.unique(mask_gt)
         gt_labels = gt_labels[gt_labels > 0]
+        pred_labels_all = np.unique(mask_pred)
+        pred_labels_all = pred_labels_all[pred_labels_all > 0]
+
+        # Track which predictions matched a GT
+        matched_predictions = set()
 
         for gt_label in gt_labels:
             key = (img_idx, int(gt_label))
-            if key not in snr_data:
-                continue
+            snr = snr_data.get(key, None)
 
-            snr = snr_data[key]
             gt_mask = mask_gt == gt_label
             detected = False
+            best_pred = None
 
             pred_labels = np.unique(mask_pred[gt_mask])
             pred_labels = pred_labels[pred_labels > 0]
@@ -277,11 +289,36 @@ def analyze_accuracy_vs_snr(images, masks, predictions, snr_data, iou_threshold=
 
                 if iou >= iou_threshold:
                     detected = True
+                    best_pred = pred_label
                     break
 
-            nucleus_results.append((snr, detected))
+            if detected:
+                total_tp += 1
+                if best_pred is not None:
+                    matched_predictions.add(best_pred)
+            else:
+                total_fn += 1
 
-    return nucleus_results
+            # Only add to SNR-binned results if we have SNR data
+            if snr is not None:
+                nucleus_results.append((snr, detected))
+
+        # Count false positives (predictions that didn't match any GT)
+        for pred_label in pred_labels_all:
+            if pred_label not in matched_predictions:
+                total_fp += 1
+
+    # Compute overall metrics
+    overall_metrics = {
+        "tp": total_tp,
+        "fn": total_fn,
+        "fp": total_fp,
+        "recall": total_tp / (total_tp + total_fn) if (total_tp + total_fn) > 0 else 0,
+        "precision": total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0,
+        "accuracy": total_tp / (total_tp + total_fn + total_fp) if (total_tp + total_fn + total_fp) > 0 else 0,
+    }
+
+    return nucleus_results, overall_metrics
 
 
 def bin_and_compute_recall(nucleus_results, n_bins=10):
@@ -431,7 +468,7 @@ def main():
 
             predictions = run_predictions(model, images_norm, input_fn, scale=scale)
 
-            nucleus_results = analyze_accuracy_vs_snr(
+            nucleus_results, overall_metrics = analyze_accuracy_vs_snr(
                 images, masks, predictions, snr_data, iou_threshold=IOU_THRESHOLD
             )
 
@@ -439,17 +476,21 @@ def main():
                 nucleus_results, n_bins=SNR_BINS
             )
 
-            overall_recall = (
-                np.mean([r[1] for r in nucleus_results]) if nucleus_results else 0
-            )
-            print(f"  Overall recall: {overall_recall:.3f}")
+            print(f"  TP={overall_metrics['tp']}, FN={overall_metrics['fn']}, FP={overall_metrics['fp']}")
+            print(f"  Recall: {overall_metrics['recall']:.3f}, Precision: {overall_metrics['precision']:.3f}")
+            print(f"  Accuracy (Jaccard): {overall_metrics['accuracy']:.3f}")
 
             dataset_results[model_name] = {
                 "nucleus_results": nucleus_results,
                 "bin_centers": bin_centers,
                 "recalls": recalls,
                 "counts": counts,
-                "overall_recall": overall_recall,
+                "overall_recall": overall_metrics["recall"],
+                "overall_precision": overall_metrics["precision"],
+                "overall_accuracy": overall_metrics["accuracy"],
+                "tp": overall_metrics["tp"],
+                "fn": overall_metrics["fn"],
+                "fp": overall_metrics["fp"],
             }
 
         all_results[dataset_name] = dataset_results
@@ -552,7 +593,12 @@ def main():
             snr_vals = [r[0] for r in data["nucleus_results"]]
             output_data[dataset_name][model_name] = {
                 "n_nuclei": len(data["nucleus_results"]),
+                "tp": int(data["tp"]),
+                "fn": int(data["fn"]),
+                "fp": int(data["fp"]),
                 "overall_recall": float(data["overall_recall"]),
+                "overall_precision": float(data["overall_precision"]),
+                "overall_accuracy": float(data["overall_accuracy"]),
                 "bin_centers": [float(x) for x in data["bin_centers"]],
                 "recalls_per_bin": [float(x) for x in data["recalls"]],
                 "counts_per_bin": [int(x) for x in data["counts"]],
@@ -564,21 +610,51 @@ def main():
         json.dump(output_data, fp, indent=2)
     print("Saved: snr_accuracy_results.json")
 
-    # Print summary table
-    print("\n" + "=" * 80)
-    print("Summary: Overall Recall by Dataset and Model")
-    print("=" * 80)
+    # Print summary tables
+    print("\n" + "=" * 100)
+    print("Summary: Detection Metrics by Dataset and Model")
+    print("=" * 100)
+
+    # Table 1: Recall
+    print("\nRecall = TP / (TP + FN)")
     print(f"{'Dataset':<20} {'1 CH':>12} {'2 CH':>12} {'3 CH':>12}")
-    print("-" * 80)
+    print("-" * 60)
     for dataset_name, dataset_results in all_results.items():
-        recalls = []
+        vals = []
         for model_key in ["1 CH (tubulin)", "2 CH (cyan+magenta)", "3 CH (all)"]:
             if model_key in dataset_results:
-                recalls.append(f"{dataset_results[model_key]['overall_recall']:.3f}")
+                vals.append(f"{dataset_results[model_key]['overall_recall']:.3f}")
             else:
-                recalls.append("N/A")
-        print(f"{dataset_name:<20} {recalls[0]:>12} {recalls[1]:>12} {recalls[2]:>12}")
-    print("=" * 80)
+                vals.append("N/A")
+        print(f"{dataset_name:<20} {vals[0]:>12} {vals[1]:>12} {vals[2]:>12}")
+
+    # Table 2: Precision
+    print("\nPrecision = TP / (TP + FP)")
+    print(f"{'Dataset':<20} {'1 CH':>12} {'2 CH':>12} {'3 CH':>12}")
+    print("-" * 60)
+    for dataset_name, dataset_results in all_results.items():
+        vals = []
+        for model_key in ["1 CH (tubulin)", "2 CH (cyan+magenta)", "3 CH (all)"]:
+            if model_key in dataset_results:
+                vals.append(f"{dataset_results[model_key]['overall_precision']:.3f}")
+            else:
+                vals.append("N/A")
+        print(f"{dataset_name:<20} {vals[0]:>12} {vals[1]:>12} {vals[2]:>12}")
+
+    # Table 3: Accuracy (Jaccard)
+    print("\nAccuracy (Jaccard) = TP / (TP + FN + FP)")
+    print(f"{'Dataset':<20} {'1 CH':>12} {'2 CH':>12} {'3 CH':>12}")
+    print("-" * 60)
+    for dataset_name, dataset_results in all_results.items():
+        vals = []
+        for model_key in ["1 CH (tubulin)", "2 CH (cyan+magenta)", "3 CH (all)"]:
+            if model_key in dataset_results:
+                vals.append(f"{dataset_results[model_key]['overall_accuracy']:.3f}")
+            else:
+                vals.append("N/A")
+        print(f"{dataset_name:<20} {vals[0]:>12} {vals[1]:>12} {vals[2]:>12}")
+
+    print("=" * 100)
 
 
 if __name__ == "__main__":
