@@ -298,7 +298,7 @@ VALIDATION_SCRIPTS = [
         "eDetectHaCaTFUCCI/validate_networks_instanseg_all_channels.py",
         "han_et_al",
         ["instanseg_1ch", "instanseg_2ch", "instanseg_3ch"],
-        "multi_instanseg",
+        "multi",
     ),
     # ConfluentFUCCI test dataset
     (
@@ -732,7 +732,6 @@ def parse_accuracy_from_output(output: str, parsing_mode: str) -> dict:
     parsing_mode : str
         'single' for scripts that output one accuracy value,
         'multi' for scripts that output 1-CH, 2-CH, 3-CH values,
-        'multi_instanseg' for InstanSeg scripts with 1/2/3 channel output.
 
     Returns
     -------
@@ -756,15 +755,6 @@ def parse_accuracy_from_output(output: str, parsing_mode: str) -> dict:
         for ch in [1, 2, 3]:
             pattern = rf"Stats at 0\.5 IoU for {ch} CH.*?accuracy=([0-9.]+)"
             match = re.search(pattern, output)
-            if match:
-                results[f"{ch}ch"] = float(match.group(1))
-
-    elif parsing_mode == "multi_instanseg":
-        # Similar to multi but for InstanSeg output format
-        # May need adjustment based on actual output format
-        for ch in [1, 2, 3]:
-            pattern = rf"Stats at 0\.5 IoU.*?{ch}.*?accuracy=([0-9.]+)"
-            match = re.search(pattern, output, re.IGNORECASE)
             if match:
                 results[f"{ch}ch"] = float(match.group(1))
 
