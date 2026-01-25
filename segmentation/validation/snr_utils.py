@@ -11,12 +11,27 @@ The background intensity (I_out) is computed once per image using all pixels
 where no nucleus is present (mask == 0).
 
 Reference: https://imagej.net/plugins/trackmate/analyzers/#contrast--signalnoise-ratio
+
+IMPORTANT: For FUCCI data with 3 channels (cyan, magenta, tubulin), only the
+nuclear channels (0: cyan, 1: magenta) should be used for SNR computation.
+The tubulin channel (2) is cytoplasmic and has no nuclear signal, so including
+it would distort the SNR analysis. By default, this module only uses nuclear
+channels (0 and 1) when computing SNR for multichannel images.
+
+Channel convention:
+- Channel 0: Cyan (G1 phase marker) - NUCLEAR
+- Channel 1: Magenta (S/G2/M phase marker) - NUCLEAR
+- Channel 2: Tubulin - CYTOPLASMIC (excluded from SNR by default)
 """
+
+# Default nuclear channels for FUCCI data (cyan=0, magenta=1)
+# Tubulin (channel 2) is cytoplasmic and should NOT be included in nuclear SNR
+NUCLEAR_CHANNELS = (0, 1)
 
 import numpy as np
 
 
-def compute_background_intensity(image, mask):
+def compute_background_intensity(image, mask, channels=None):
     """
     Compute the mean background intensity for an image.
 
@@ -28,12 +43,17 @@ def compute_background_intensity(image, mask):
         2D or 3D image (HxW or HxWxC).
     mask : np.ndarray
         2D label mask where 0 indicates background.
+    channels : tuple of int or None
+        For multichannel images, which channels to compute background for.
+        If None, defaults to NUCLEAR_CHANNELS (0, 1) for 3+ channel images,
+        or all channels for 2-channel images. This excludes the tubulin
+        channel (2) which is cytoplasmic and has no nuclear signal.
 
     Returns
     -------
     float or list of float
         Mean background intensity. If image is multichannel, returns a list
-        with one value per channel.
+        with one value per channel (only for specified channels).
     """
     background_mask = mask == 0
 
@@ -44,12 +64,18 @@ def compute_background_intensity(image, mask):
 
     if is_multichannel:
         n_channels = image.shape[-1]
-        return [image[..., c][background_mask].mean() for c in range(n_channels)]
+        # Default: use only nuclear channels for 3+ channel images
+        if channels is None:
+            if n_channels >= 3:
+                channels = NUCLEAR_CHANNELS
+            else:
+                channels = tuple(range(n_channels))
+        return [image[..., c][background_mask].mean() for c in channels]
     else:
         return image[background_mask].mean()
 
 
-def compute_snr_for_label(image, mask, label_id, background_intensity):
+def compute_snr_for_label(image, mask, label_id, background_intensity, channels=None):
     """
     Compute SNR for a single labeled nucleus.
 
@@ -62,7 +88,12 @@ def compute_snr_for_label(image, mask, label_id, background_intensity):
     label_id : int
         The label value for the nucleus of interest.
     background_intensity : float or list of float
-        Precomputed background intensity for the image.
+        Precomputed background intensity for the image (must match channels).
+    channels : tuple of int or None
+        For multichannel images, which channels to compute SNR for.
+        If None, defaults to NUCLEAR_CHANNELS (0, 1) for 3+ channel images,
+        or all channels for 2-channel images. This excludes the tubulin
+        channel (2) which is cytoplasmic and has no nuclear signal.
 
     Returns
     -------
@@ -79,6 +110,13 @@ def compute_snr_for_label(image, mask, label_id, background_intensity):
 
     if is_multichannel:
         n_channels = image.shape[-1]
+        # Default: use only nuclear channels for 3+ channel images
+        if channels is None:
+            if n_channels >= 3:
+                channels = NUCLEAR_CHANNELS
+            else:
+                channels = tuple(range(n_channels))
+
         results = {
             "snr": [],
             "mean_in": [],
@@ -86,11 +124,11 @@ def compute_snr_for_label(image, mask, label_id, background_intensity):
             "std_in": [],
         }
 
-        for c in range(n_channels):
+        for idx, c in enumerate(channels):
             channel_img = image[..., c]
             mean_in = channel_img[nucleus_mask].mean()
             std_in = channel_img[nucleus_mask].std()
-            mean_out = background_intensity[c]
+            mean_out = background_intensity[idx]  # Use index into background list
 
             if std_in > 0:
                 snr = (mean_in - mean_out) / std_in
@@ -121,7 +159,7 @@ def compute_snr_for_label(image, mask, label_id, background_intensity):
         }
 
 
-def compute_snr_for_image(image, mask):
+def compute_snr_for_image(image, mask, channels=None):
     """
     Compute SNR for all labeled nuclei in an image.
 
@@ -134,6 +172,10 @@ def compute_snr_for_image(image, mask):
         2D or 3D image (HxW or HxWxC).
     mask : np.ndarray
         2D label mask.
+    channels : tuple of int or None
+        For multichannel images, which channels to use for SNR computation.
+        If None, defaults to NUCLEAR_CHANNELS (0, 1) for 3+ channel images.
+        This excludes the tubulin channel (2) which is cytoplasmic.
 
     Returns
     -------
@@ -141,7 +183,7 @@ def compute_snr_for_image(image, mask):
         Dictionary mapping label_id to SNR results.
     """
     # Compute background intensity once for the entire image
-    background_intensity = compute_background_intensity(image, mask)
+    background_intensity = compute_background_intensity(image, mask, channels=channels)
 
     if background_intensity is None:
         return {}
@@ -151,14 +193,16 @@ def compute_snr_for_image(image, mask):
 
     results = {}
     for label_id in label_ids:
-        snr_result = compute_snr_for_label(image, mask, label_id, background_intensity)
+        snr_result = compute_snr_for_label(
+            image, mask, label_id, background_intensity, channels=channels
+        )
         if snr_result is not None:
             results[int(label_id)] = snr_result
 
     return results
 
 
-def compute_snr_for_dataset(images, masks, channel_index=None):
+def compute_snr_for_dataset(images, masks, channel_index=None, channels=None):
     """
     Compute SNR statistics for an entire dataset.
 
@@ -169,8 +213,12 @@ def compute_snr_for_dataset(images, masks, channel_index=None):
     masks : list of np.ndarray
         List of corresponding label masks.
     channel_index : int or None
-        If not None, extract SNR for specific channel only.
+        If not None, extract SNR for specific channel only (index into channels).
         If None and images are multichannel, returns SNR per channel.
+    channels : tuple of int or None
+        For multichannel images, which channels to use for SNR computation.
+        If None, defaults to NUCLEAR_CHANNELS (0, 1) for 3+ channel images.
+        This excludes the tubulin channel (2) which is cytoplasmic.
 
     Returns
     -------
@@ -179,13 +227,25 @@ def compute_snr_for_dataset(images, masks, channel_index=None):
         - 'all_snr': flat list of all SNR values
         - 'per_image': list of dicts mapping label_id to SNR for each image
         - 'channel_snr': if multichannel, dict mapping channel index to SNR list
+        - 'channels_used': tuple of channel indices that were used
     """
     all_snr = []
     per_image = []
     channel_snr = {}
+    channels_used = None
 
     for img, mask in zip(images, masks):
-        img_results = compute_snr_for_image(img, mask)
+        # Determine channels for this image
+        if channels is None and img.ndim == 3:
+            n_ch = img.shape[-1]
+            if n_ch >= 3:
+                channels_used = NUCLEAR_CHANNELS
+            else:
+                channels_used = tuple(range(n_ch))
+        elif channels is not None:
+            channels_used = channels
+
+        img_results = compute_snr_for_image(img, mask, channels=channels)
         per_image.append(img_results)
 
         for label_id, result in img_results.items():
@@ -211,4 +271,5 @@ def compute_snr_for_dataset(images, masks, channel_index=None):
         "all_snr": all_snr,
         "per_image": per_image,
         "channel_snr": channel_snr if channel_snr else None,
+        "channels_used": channels_used,
     }

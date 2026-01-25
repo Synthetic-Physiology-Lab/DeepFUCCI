@@ -7,6 +7,14 @@ datasets using the ground truth segmentation masks.
 SNR = (I_in - I_out) / std_in
 Reference: https://imagej.net/plugins/trackmate/analyzers/#contrast--signalnoise-ratio
 
+IMPORTANT: For FUCCI data with 3 channels, only the nuclear channels are used:
+- Channel 0: Cyan (G1 phase marker) - NUCLEAR
+- Channel 1: Magenta (S/G2/M phase marker) - NUCLEAR
+- Channel 2: Tubulin - CYTOPLASMIC (EXCLUDED from SNR analysis)
+
+The tubulin channel is cytoplasmic and has no nuclear signal, so including it
+would distort the SNR analysis.
+
 Usage:
     python snr_histogram.py
 
@@ -332,7 +340,8 @@ def main():
     )
 
     if has_channels:
-        channel_names = ["Cyan (G1)", "Magenta (S/G2/M)", "Tubulin"]
+        # Only nuclear channels are used (tubulin is cytoplasmic, excluded)
+        channel_names = ["Cyan (G1)", "Magenta (S/G2/M)"]
         n_channels = max(
             len(result["channel_snr"])
             for result in snr_results.values()

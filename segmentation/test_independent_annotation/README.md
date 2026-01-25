@@ -68,6 +68,8 @@ This script analyzes whether disagreements are driven by low SNR (hard to see nu
 3. Performs statistical tests comparing SNR distributions
 4. Generates visualization plots
 
+**Note:** SNR is computed using only the nuclear channels (cyan=0, magenta=1). The tubulin channel (2) is cytoplasmic and excluded from SNR computation as it has no nuclear signal.
+
 **Output:**
 - `disagreement_snr_analysis.pdf/png` - Histogram and box plot
 - `disagreement_snr_results.json` - Detailed statistics
@@ -126,15 +128,15 @@ This script analyzes whether low cyan (G1) or magenta (S/G2/M) intensity contrib
 | Metric      | Agreeing Labels | Disagreeing Labels |
 |-------------|----------------|-------------------|
 | N           | 1329           | 234               |
-| Mean SNR    | 2.13           | 2.17              |
-| Median SNR  | 2.04           | 1.92              |
-| Std SNR     | 0.89           | 1.31              |
+| Mean SNR    | 1.88           | 0.77              |
+| Median SNR  | 1.77           | 0.60              |
+| Std SNR     | 0.87           | 0.74              |
 
 **Statistical Tests:**
-- T-test: t=-0.638, p=0.52 (not significant)
-- Mann-Whitney U: U=160334, p=0.45 (not significant)
+- T-test: t=18.31, p=5.55e-68 (highly significant)
+- Mann-Whitney U: U=264307, p=1.71e-65 (highly significant)
 
-**Key Finding:** SNR is NOT the driver of inter-annotator disagreement. Disagreeing labels have essentially the same mean SNR as agreeing labels. This means disagreements reflect semantic ambiguity (interpretation differences) rather than visibility issues.
+**Key Finding:** SNR IS a significant driver of inter-annotator disagreement. Disagreeing labels have substantially lower mean SNR (0.77 vs 1.88) than agreeing labels. Low nuclear signal makes nuclei harder to identify consistently, leading to annotation disagreements.
 
 ### FUCCI Channel Intensity Analysis
 
@@ -180,7 +182,7 @@ This script analyzes whether low cyan (G1) or magenta (S/G2/M) intensity contrib
 
 ## Interpretation
 
-1. **The 15% disagreement rate represents intrinsic annotation ambiguity.** This is not a data quality issue that could be fixed with better imaging—annotators disagree on interpretation, not visibility.
+1. **Low nuclear SNR drives annotation disagreements.** Disagreeing labels have significantly lower SNR (mean 0.77) than agreeing labels (mean 1.88). Low nuclear signal makes cells harder to identify, leading to inconsistent annotations.
 
 2. **Most disagreements are fundamental, not borderline.** 44% of disagreements have zero overlap (IoU=0), meaning one annotator marked something as a cell that the other completely ignored. Only 24% are near-matches with minor boundary differences.
 
@@ -188,11 +190,11 @@ This script analyzes whether low cyan (G1) or magenta (S/G2/M) intensity contrib
 
 4. **Boundary disagreements are NOT intensity-driven.** Near-match cases (0.3≤IoU<0.5) show no significant intensity difference—these are purely geometric disagreements about where to draw boundaries.
 
-5. **Model "errors" need reinterpretation.** When a model disagrees with ground truth on a clearly visible nucleus, it may be making a legitimate alternative interpretation rather than failing.
+5. **Model "errors" need reinterpretation.** When a model disagrees with ground truth on a low-SNR nucleus, it may be facing the same visibility challenges as human annotators.
 
 6. **The models exceed human reproducibility.** Since models achieve ~91-94% agreement while humans agree only 80-90%, the models are performing better than human inter-annotator variability allows.
 
-7. **SNR explains dataset differences but not individual disagreements.** The 20x dataset has lower inter-annotator agreement (80.5% vs 89.8%) and lower SNR (1.77 vs 3.12), but within each dataset, disagreements are not concentrated in low-SNR nuclei.
+7. **SNR explains both dataset differences AND individual disagreements.** The 20x dataset has lower inter-annotator agreement (80.5% vs 89.8%) and lower SNR, and within each dataset, disagreements ARE concentrated in low-SNR nuclei (mean SNR 0.77 vs 1.88).
 
 ## Scripts
 

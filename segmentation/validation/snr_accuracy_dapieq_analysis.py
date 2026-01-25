@@ -12,6 +12,14 @@ This script:
 
 SNR = (I_in - I_out) / std_in
 
+IMPORTANT: For FUCCI data with 3 channels, only the nuclear channels are used for SNR:
+- Channel 0: Cyan (G1 phase marker) - NUCLEAR
+- Channel 1: Magenta (S/G2/M phase marker) - NUCLEAR
+- Channel 2: Tubulin - CYTOPLASMIC (EXCLUDED from SNR analysis)
+
+The tubulin channel is cytoplasmic and has no nuclear signal, so including it
+would distort the SNR analysis.
+
 Usage:
     python snr_accuracy_dapieq_analysis.py
 """
@@ -224,12 +232,19 @@ def dapieq_predict_postprocessed(model, x, nucleus_radius_pixel):
 
 
 def compute_snr_per_nucleus(images, masks):
-    """Compute SNR for each nucleus."""
+    """
+    Compute SNR for each nucleus.
+
+    Note: For multichannel images, only nuclear channels (0: cyan, 1: magenta) are used.
+    The tubulin channel (2) is cytoplasmic and excluded from SNR computation.
+    """
     snr_data = {}
 
     for img_idx, (img, mask) in enumerate(
         tqdm(zip(images, masks), total=len(images), desc="Computing SNR")
     ):
+        # Compute background intensity only for nuclear channels
+        # (tubulin is excluded by default)
         background_intensity = compute_background_intensity(img, mask)
         if background_intensity is None:
             continue
@@ -238,11 +253,12 @@ def compute_snr_per_nucleus(images, masks):
         labels = labels[labels > 0]
 
         for label_id in labels:
+            # SNR computed only for nuclear channels (tubulin excluded by default)
             result = compute_snr_for_label(img, mask, label_id, background_intensity)
             if result is not None:
                 snr = result["snr"]
                 if isinstance(snr, list):
-                    snr = max(snr)
+                    snr = max(snr)  # Max across nuclear channels only
                 snr_data[(img_idx, int(label_id))] = snr
 
     return snr_data

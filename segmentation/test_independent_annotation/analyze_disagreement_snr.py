@@ -8,6 +8,14 @@ ground truth masks.
 The analysis tests whether disagreements are driven by low SNR (hard to see
 nuclei) or by semantic ambiguity (interpretation differences).
 
+IMPORTANT: For FUCCI data with 3 channels, only the nuclear channels are used for SNR:
+- Channel 0: Cyan (G1 phase marker) - NUCLEAR
+- Channel 1: Magenta (S/G2/M phase marker) - NUCLEAR
+- Channel 2: Tubulin - CYTOPLASMIC (EXCLUDED from SNR analysis)
+
+The tubulin channel is cytoplasmic and has no nuclear signal, so including it
+would distort the SNR analysis.
+
 Usage:
     python analyze_disagreement_snr.py
 
@@ -119,6 +127,7 @@ def analyze_dataset(dataset_name, dataset_path):
             gt_mask = label_skimage(gt_mask)
 
         # Compute background intensity for SNR
+        # (only for nuclear channels - tubulin is excluded by default)
         background_intensity = compute_background_intensity(image, independent_mask)
         if background_intensity is None:
             continue
@@ -134,7 +143,7 @@ def analyze_dataset(dataset_name, dataset_path):
             label_mask = independent_mask == label_id
             best_iou = find_best_match_iou(label_mask, gt_mask)
 
-            # Compute SNR
+            # Compute SNR (only for nuclear channels - tubulin excluded by default)
             snr_result = compute_snr_for_label(
                 image, independent_mask, label_id, background_intensity
             )
@@ -143,7 +152,7 @@ def analyze_dataset(dataset_name, dataset_path):
 
             snr = snr_result["snr"]
             if isinstance(snr, list):
-                snr = max(snr)  # Use max across channels
+                snr = max(snr)  # Use max across nuclear channels only
 
             if best_iou >= IOU_THRESHOLD:
                 agreeing_snr.append(snr)

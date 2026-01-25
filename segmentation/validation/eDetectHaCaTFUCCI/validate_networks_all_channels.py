@@ -161,5 +161,5 @@ for Y_val_pred in [labels_1d, labels_2d, labels_3d]:
     ax2.legend()
     plt.show()
 
-    print("Stats at 0.5 IoU for {i} CH: ", stats[4])
+    print(f"Stats at 0.5 IoU for {i} CH: ", stats[4])
     i += 1
