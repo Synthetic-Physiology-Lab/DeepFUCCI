@@ -54,12 +54,14 @@ IOU_THRESHOLD = 0.5  # IoU threshold for matching
 SNR_BINS = 10  # Number of bins for SNR analysis
 
 # External test datasets configuration
-# Same format as snr_histogram.py
+# Supports two types:
+#   - "directory": loads all .tif files from images_dir and masks_dir
+#   - "single_files": loads specific image and mask files from lists
 EXTERNAL_DATASETS = {
     "ConfluentFUCCI": {
         "type": "directory",
-        "images_dir": f"{DATA_DIR}/test_confluentfucci/images",
-        "masks_dir": f"{DATA_DIR}/test_confluentfucci/masks",
+        "images_dir": f"{DATA_DIR}/test_confluent_fucci_data/images",
+        "masks_dir": f"{DATA_DIR}/test_confluent_fucci_data/masks",
         "relabel": True,
         "channel_order": "YXC",
     },
@@ -78,27 +80,28 @@ EXTERNAL_DATASETS = {
         "channel_order": "YXC",
     },
     "CellMAPtracer": {
-        "type": "directory",
-        "images_dir": f"{DATA_DIR}/test_cellmaptracer/images",
-        "masks_dir": f"{DATA_DIR}/test_cellmaptracer/masks",
+        "type": "single_files",
+        "image_files": [f"{DATA_DIR}/test_cellmaptracer/image_cyan_magenta_last_frame.tif"],
+        "mask_files": [f"{DATA_DIR}/test_cellmaptracer/gt_last_frame.tif"],
         "relabel": True,
         "channel_order": "CYX",
         "scale": 0.65 / 0.34,  # pixel size correction
     },
     "CottonEtAl": {
-        "type": "directory",
-        "images_dir": f"{DATA_DIR}/test_cottonetal/images",
-        "masks_dir": f"{DATA_DIR}/test_cottonetal/masks",
+        "type": "single_files",
+        "image_files": [f"{DATA_DIR}/test_cottonetal/frame_69.tif"],
+        "mask_files": [f"{DATA_DIR}/test_cottonetal/gt_frame_69.tif"],
         "relabel": True,
         "channel_order": "CYX",
         "scale": 2.0,  # pixel size correction
     },
     "HaCaT_Han": {
-        "type": "directory",
-        "images_dir": f"{DATA_DIR}/HaCaT_Han_et_al/images",
-        "masks_dir": f"{DATA_DIR}/HaCaT_Han_et_al/masks",
+        "type": "ome_tiff",
+        "data_dir": f"{DATA_DIR}/HaCaT_Han_et_al",
+        "image_file": "merged.ome.tif",
+        "mask_file": "labels_manual_annotation.tif",
+        "metadata_file": "metadata.yml",
         "relabel": True,
-        "channel_order": "YXC",
     },
 }
 
@@ -203,6 +206,59 @@ def load_single_files_dataset(
     return images, masks, filenames
 
 
+def load_ome_tiff_dataset(config):
+    """Load dataset from OME-TIFF file with multiple timepoints using metadata.yml."""
+    try:
+        from aicsimageio import AICSImage
+        import yaml
+    except ImportError:
+        print("  AICSImage or yaml not available for OME-TIFF loading")
+        return None, None, None
+
+    data_dir = Path(config["data_dir"])
+    image_path = data_dir / config["image_file"]
+    mask_path = data_dir / config["mask_file"]
+    metadata_path = data_dir / config.get("metadata_file", "metadata.yml")
+
+    if not image_path.exists() or not mask_path.exists():
+        print(f"  File not found: {image_path} or {mask_path}")
+        return None, None, None
+
+    # Load metadata for channel info
+    with open(metadata_path, "r") as f:
+        metadata = yaml.safe_load(f)
+
+    channels = metadata.get("channels", {})
+    cyan_ch = int(channels.get("cyan", 1))
+    magenta_ch = int(channels.get("magenta", 0))
+
+    img_stream = AICSImage(str(image_path))
+    label_stream = AICSImage(str(mask_path))
+
+    images = []
+    masks = []
+    filenames = []
+
+    relabel = config.get("relabel", False)
+
+    for t in tqdm(range(img_stream.dims.T), desc="Loading OME-TIFF timepoints"):
+        img_cyan = img_stream.get_image_data("YX", C=cyan_ch, T=t)
+        img_magenta = img_stream.get_image_data("YX", C=magenta_ch, T=t)
+        # Stack channels to YXC format (only nuclear channels: cyan, magenta)
+        img = np.stack([img_cyan, img_magenta], axis=-1)
+        images.append(img)
+
+        gt_labels = label_stream.get_image_data("YX", Z=t)
+        if relabel:
+            masks.append(fill_label_holes(label_skimage(gt_labels)))
+        else:
+            masks.append(gt_labels)
+
+        filenames.append(f"t{t:03d}.tif")
+
+    return images, masks, filenames
+
+
 def load_external_dataset(config):
     """Load external dataset based on config."""
     dataset_type = config.get("type", "directory")
@@ -223,6 +279,8 @@ def load_external_dataset(config):
             relabel=relabel,
             channel_order=channel_order,
         )
+    elif dataset_type == "ome_tiff":
+        return load_ome_tiff_dataset(config)
     return None, None, None
 
 
@@ -394,7 +452,7 @@ def main():
     if use_gpu:
         from csbdeep.utils.tf import limit_gpu_memory
 
-        limit_gpu_memory(0.1, total_memory=50000)
+        limit_gpu_memory(0.5, total_memory=50000)
 
     # Collect all datasets
     all_datasets = {}
@@ -476,7 +534,18 @@ def main():
 
         dataset_results = {}
 
+        # Determine number of channels in this dataset
+        n_channels = images[0].shape[-1] if images[0].ndim == 3 else 1
+
         for model_name, model_info in models.items():
+            # Skip models that require channels not present in the dataset
+            if model_name == "1 CH (tubulin)" and n_channels < 3:
+                print(f"\nSkipping {model_name} (dataset has only {n_channels} channels, tubulin not available)")
+                continue
+            if model_name == "3 CH (all)" and n_channels < 3:
+                print(f"\nSkipping {model_name} (dataset has only {n_channels} channels)")
+                continue
+
             print(f"\nRunning {model_name}...")
             model = model_info["model"]
             input_fn = model_info["input_fn"]
