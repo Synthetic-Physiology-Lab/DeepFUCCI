@@ -89,6 +89,38 @@ This script analyzes whether low cyan (G1) or magenta (S/G2/M) intensity contrib
 - `disagreement_intensity_analysis.pdf/png` - Intensity comparison plots
 - `disagreement_intensity_results.json` - Detailed statistics
 
+### Step 5: Validate Models Against Independent Annotations
+
+```bash
+conda activate kerasEnv
+python validate_against_independent.py
+```
+
+This script tests whether models learned **generalizable nuclear features** or **annotation-specific biases** by validating against independent annotations:
+1. Loads StarDist models (1CH, 2CH, 3CH)
+2. Runs predictions on HT1080 20x and 40x test datasets
+3. Computes accuracy against **both** mask sets:
+   - `masks/` (primary annotator - used for training)
+   - `masks_independent/` (independent annotator)
+4. Compares the two accuracy values to detect annotation bias
+
+**Output:**
+- `validation_independent_results.json` - Full results with accuracy, F1, precision, recall
+- `validation_independent_comparison.csv` - Side-by-side comparison table
+
+### Step 6: Generate Extended Comparison Tables
+
+```bash
+python compare_methods_to_interannotator.py
+```
+
+This script now includes extended comparison showing accuracy against both annotators:
+
+**Output:**
+- `interannotator_comparison.csv` - Original comparison table
+- `interannotator_comparison.tex` - LaTeX formatted table
+- `interannotator_comparison_extended.csv` - Extended table with independent validation
+
 ## Results Summary
 
 ### Inter-Annotator Agreement
@@ -107,6 +139,78 @@ This script analyzes whether low cyan (G1) or magenta (S/G2/M) intensity contrib
 | HT1080_40x | 89.8%                    | 92.0%        | 93.8%        |
 
 **Key Finding:** The StarDist models achieve higher agreement with ground truth than independent human annotators achieve with each other. This validates that the models are performing at or above human-expert level.
+
+### Model Validation Against Independent Annotations
+
+This analysis tests whether models learned generalizable features or annotation-specific biases.
+
+| Dataset | Model | vs Primary | vs Independent | Difference | Interpretation |
+|---------|-------|------------|----------------|------------|----------------|
+| HT1080 20x | StarDist 1CH | 68.7% | 61.2% | +7.5% | Some annotation bias |
+| HT1080 20x | StarDist 2CH | 91.3% | 79.3% | +12.0% | Annotation bias detected |
+| HT1080 20x | StarDist 3CH | 91.0% | 77.9% | +13.1% | Annotation bias detected |
+| HT1080 20x | DAPIeq raw | 36.1% | 32.1% | +4.0% | Mild bias (but low accuracy) |
+| HT1080 20x | DAPIeq post | 85.2% | 78.5% | +6.7% | Some annotation bias |
+| HT1080 40x | StarDist 1CH | 64.3% | 59.7% | +4.7% | Mild annotation bias |
+| HT1080 40x | StarDist 2CH | 92.0% | 86.4% | +5.7% | Mild annotation bias |
+| HT1080 40x | StarDist 3CH | 93.8% | 84.9% | +8.9% | Some annotation bias |
+| HT1080 40x | DAPIeq raw | 85.1% | 83.9% | +1.2% | **Generalizes well** |
+| HT1080 40x | DAPIeq post | 85.4% | 87.0% | -1.6% | **Generalizes well** |
+
+**Summary Statistics:**
+
+| Model | Avg vs Primary | Avg vs Independent | Avg Difference |
+|-------|----------------|-------------------|----------------|
+| StarDist 1CH | 66.5% | 60.4% | +6.1% |
+| StarDist 2CH | 91.7% | 82.9% | +8.8% |
+| StarDist 3CH | 92.4% | 81.4% | +11.0% |
+| DAPIeq raw | 60.6% | 58.0% | +2.6% |
+| DAPIeq post | 85.3% | 82.7% | +2.6% |
+
+**Key Findings:**
+
+1. **Custom-trained models show annotation-specific bias (5-13%).** StarDist models perform better against the primary annotator (used in training) than against the independent annotator.
+
+2. **DAPI-equivalent methods show minimal bias (+2.6%).** The pretrained StarDist model with DAPI-equivalent preprocessing generalizes well across annotators, suggesting it learned more universal nuclear features.
+
+3. **Independent validation ≈ inter-annotator agreement.** When validated against independent annotations, model accuracy (77-87%) is close to the inter-annotator agreement level (80-90%), suggesting the models are learning something real but custom-trained models also pick up annotation-specific patterns.
+
+4. **3-channel models show more bias than 2-channel.** StarDist 3CH shows larger differences (+11% avg) than StarDist 2CH (+8.8% avg), possibly because the additional tubulin channel provides cues that correlate with the primary annotator's style.
+
+5. **40x dataset shows less bias.** The higher-quality 40x images show smaller differences than 20x images, suggesting annotation bias is more pronounced when image quality is lower.
+
+6. **DAPIeq post actually performs BETTER against the independent annotator on 40x data (-1.6% difference).** This suggests the pretrained model may capture more generalizable features than the training data itself.
+
+### SNR Analysis: Model Detections vs Misses
+
+This analysis tests whether model failures (missed nuclei) correlate with low SNR.
+
+| Model | Detected SNR | Missed SNR | Difference | p-value |
+|-------|--------------|------------|------------|---------|
+| DAPIeq raw | 2.788 | 1.130 | **+1.658** | 3.13e-194 |
+| DAPIeq post | 2.279 | 0.939 | **+1.341** | 8.96e-40 |
+| StarDist 2CH | 2.243 | 0.690 | **+1.553** | 1.74e-32 |
+
+**Per-Dataset Breakdown:**
+
+| Model | Dataset | Detected (n) | Missed (n) | Recall | Detected SNR | Missed SNR |
+|-------|---------|--------------|------------|--------|--------------|------------|
+| DAPIeq raw | HT1080 20x | 272 | 474 | 36.5% | 2.00 | 1.09 |
+| DAPIeq raw | HT1080 40x | 646 | 88 | 88.0% | 3.12 | 1.32 |
+| DAPIeq post | HT1080 20x | 674 | 72 | 90.3% | 1.52 | 0.52 |
+| DAPIeq post | HT1080 40x | 673 | 61 | 91.7% | 3.04 | 1.44 |
+| StarDist 2CH | HT1080 20x | 696 | 50 | 93.3% | 1.50 | 0.34 |
+| StarDist 2CH | HT1080 40x | 704 | 30 | 95.9% | 2.98 | 1.27 |
+
+**Key Findings:**
+
+1. **Low SNR strongly drives model misses.** All models show highly significant differences (p < 10⁻³²) between detected and missed nuclei SNR. Missed nuclei have ~1.1-1.7 lower SNR on average.
+
+2. **DAPIeq raw fails dramatically on low-SNR data (20x).** Only 36.5% recall on 20x vs 88% on 40x. The postprocessing (top-hat + blur) rescues this to 90.3%.
+
+3. **StarDist 2CH has the lowest missed SNR (0.69).** This means StarDist can detect dimmer nuclei than DAPI-eq methods, explaining its higher overall recall (93-96%).
+
+4. **All models struggle with the same low-SNR nuclei.** The missed nuclei have similar SNR across methods (~0.7-1.1), suggesting a fundamental visibility limit.
 
 ### IoU Distribution of Disagreements
 
@@ -196,6 +300,12 @@ This script analyzes whether low cyan (G1) or magenta (S/G2/M) intensity contrib
 
 7. **SNR explains both dataset differences AND individual disagreements.** The 20x dataset has lower inter-annotator agreement (80.5% vs 89.8%) and lower SNR, and within each dataset, disagreements ARE concentrated in low-SNR nuclei (mean SNR 0.77 vs 1.88).
 
+8. **Models show some annotation-specific bias.** When validated against independent annotations, accuracy drops by 5-13% compared to primary annotations. This suggests models learn both generalizable features AND some annotation-specific patterns.
+
+9. **Independent validation ≈ inter-annotator agreement.** Model accuracy against independent annotations (77-86%) is close to inter-annotator agreement (80-90%), suggesting models perform at human-level when evaluated fairly against unseen annotation styles.
+
+10. **Image quality affects annotation bias.** Higher quality 40x images show less annotation bias (5-9% difference) than 20x images (7-13% difference), suggesting clearer images lead to more consistent annotations and more generalizable model learning.
+
 ## Scripts
 
 | Script | Description |
@@ -204,6 +314,8 @@ This script analyzes whether low cyan (G1) or magenta (S/G2/M) intensity contrib
 | `analyze_disagreement_iou.py` | Analyze IoU distribution and categorize disagreement types |
 | `analyze_disagreement_snr.py` | Analyze SNR distribution of agreeing vs disagreeing labels |
 | `analyze_disagreement_intensity.py` | Analyze FUCCI channel intensity (cyan/magenta) with normalization |
+| `validate_against_independent.py` | Validate models against independent annotator masks |
+| `analyze_model_snr.py` | **Analyze SNR of detected vs missed nuclei for each model** |
 | `compare_methods_to_interannotator.py` | Compare method accuracies against inter-annotator agreement |
 | `snr_utils.py` | Utility functions for SNR computation |
 

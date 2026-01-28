@@ -4,12 +4,16 @@ Compare segmentation method accuracies against inter-annotator agreement.
 This script loads validation results and inter-annotator agreement data,
 then generates comparison tables in LaTeX and CSV format.
 
+It now also includes validation against independent annotator masks to test
+whether models learned generalizable features or annotation-specific biases.
+
 Usage:
     python compare_methods_to_interannotator.py
 
 Output:
     - interannotator_comparison.csv
     - interannotator_comparison.tex
+    - interannotator_comparison_extended.csv (with independent annotator validation)
 """
 
 import json
@@ -20,6 +24,7 @@ from pathlib import Path
 # =============================================================================
 
 VALIDATION_RESULTS = "../validation/validation_results.json"
+VALIDATION_INDEPENDENT_RESULTS = "validation_independent_results.json"
 
 # Inter-annotator agreement rates (from find_disagreeing_labels.py)
 INTERANNOTATOR_AGREEMENT = {
@@ -200,5 +205,130 @@ def main():
         print(f"  Methods < inter-annotator: {len(methods_below)}")
 
 
+def load_independent_validation():
+    """Load validation results against independent annotator masks."""
+    independent_path = Path(VALIDATION_INDEPENDENT_RESULTS)
+    if not independent_path.exists():
+        return None
+
+    with open(independent_path) as fp:
+        return json.load(fp)
+
+
+def generate_extended_comparison():
+    """
+    Generate extended comparison showing accuracy against both annotators.
+
+    This tests whether models learned generalizable features or just
+    matched the primary annotator's style.
+    """
+    # Load both result sets
+    with open(VALIDATION_RESULTS) as fp:
+        validation_results = json.load(fp)
+
+    independent_results = load_independent_validation()
+    if independent_results is None:
+        print("\nNote: Run validate_against_independent.py first to generate")
+        print("      independent annotator validation results.")
+        return
+
+    print("\n" + "=" * 80)
+    print("Extended Comparison: Accuracy vs Primary and Independent Annotators")
+    print("=" * 80)
+    print()
+    print("This tests whether models learned generalizable nuclear features")
+    print("or annotation-specific biases from the primary annotator.")
+    print()
+
+    # Prepare extended comparison table
+    lines = [
+        "Method,Dataset,vs_Primary,vs_Independent,Difference,Interpretation"
+    ]
+
+    # All methods to include in extended comparison
+    all_methods = [
+        ("StarDist 1CH", "stardist_1ch"),
+        ("StarDist 2CH", "stardist_2ch"),
+        ("StarDist 3CH", "stardist_3ch"),
+        ("DAPIeq raw", "dapieq_raw"),
+        ("DAPIeq post", "dapieq_post"),
+    ]
+
+    for dataset_name, dataset_key in DATASETS:
+        print(f"\n{dataset_name}:")
+        print(f"  Inter-annotator agreement: {INTERANNOTATOR_AGREEMENT[dataset_key]:.1%}")
+        print()
+
+        # Get results from independent validation
+        if dataset_key not in independent_results.get("per_dataset", {}):
+            print(f"  No independent validation data for {dataset_key}")
+            continue
+
+        dataset_data = independent_results["per_dataset"][dataset_key]
+
+        print(f"  {'Method':<20} {'vs Primary':>12} {'vs Independent':>15} {'Diff':>8}")
+        print(f"  {'-'*58}")
+
+        for method_name, method_key in all_methods:
+            vs_primary = dataset_data.get("vs_primary", {}).get(method_key, {})
+            vs_independent = dataset_data.get("vs_independent", {}).get(method_key, {})
+
+            if vs_primary and vs_independent:
+                acc_primary = vs_primary.get("accuracy", 0)
+                acc_independent = vs_independent.get("accuracy", 0)
+                diff = acc_primary - acc_independent
+
+                # Interpretation
+                interannotator = INTERANNOTATOR_AGREEMENT[dataset_key]
+                if abs(diff) < 0.02:
+                    interpretation = "Generalizes well"
+                elif diff > 0.05:
+                    interpretation = "May have annotation bias"
+                elif acc_independent >= interannotator:
+                    interpretation = "Robust across annotators"
+                else:
+                    interpretation = "Needs investigation"
+
+                print(f"  {method_name:<20} {acc_primary:>12.1%} {acc_independent:>15.1%} {diff:>+8.1%}")
+
+                lines.append(
+                    f"{method_name},{dataset_name},{acc_primary:.3f},{acc_independent:.3f},{diff:+.3f},{interpretation}"
+                )
+
+        # Add inter-annotator baseline
+        interannotator = INTERANNOTATOR_AGREEMENT[dataset_key]
+        print(f"  {'Inter-annotator':<20} {interannotator:>12.1%} {interannotator:>15.1%} {0:>+8.1%}")
+        lines.append(
+            f"Inter-annotator,{dataset_name},{interannotator:.3f},{interannotator:.3f},0.000,Baseline"
+        )
+
+    # Save extended CSV
+    csv_path = "interannotator_comparison_extended.csv"
+    with open(csv_path, "w") as fp:
+        fp.write("\n".join(lines))
+    print(f"\nExtended comparison saved to: {csv_path}")
+
+    # Print summary interpretation
+    print("\n" + "=" * 80)
+    print("Interpretation Guide")
+    print("=" * 80)
+    print()
+    print("1. If vs_Independent ≈ vs_Primary (diff < 2%):")
+    print("   → Model learned generalizable nuclear features")
+    print()
+    print("2. If vs_Independent < vs_Primary (diff > 5%):")
+    print("   → Model may have learned primary annotator's style/biases")
+    print()
+    print("3. If vs_Independent > inter-annotator agreement:")
+    print("   → Model is robust and performs well across annotation styles")
+    print()
+    print("4. Key insight: If the best models (StarDist 2CH/3CH) maintain high")
+    print("   accuracy against independent annotations, they're learning real")
+    print("   nuclear boundaries, not just mimicking training annotations.")
+
+
 if __name__ == "__main__":
     main()
+
+    # Generate extended comparison if independent validation exists
+    generate_extended_comparison()
